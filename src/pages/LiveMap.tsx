@@ -1,90 +1,25 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { GoogleMap, useJsApiLoader, Marker, InfoWindow } from '@react-google-maps/api';
+import React, { useState, useEffect } from 'react';
+import { MapContainer, TileLayer, CircleMarker, Popup, useMap } from 'react-leaflet';
+import 'leaflet/dist/leaflet.css';
 import { motion } from 'motion/react';
 import { Shield, MapPin, Navigation, ArrowLeft, Loader2, Camera, CheckCircle2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { uploadFile } from '../lib/storage';
 
-const containerStyle = {
-  width: '100%',
-  height: 'calc(100vh - 80px)'
-};
-
-const mapOptions = {
-  disableDefaultUI: false,
-  zoomControl: true,
-  streetViewControl: false,
-  mapTypeControl: false,
-  fullscreenControl: true,
-  styles: [
-    {
-      "featureType": "all",
-      "elementType": "labels.text.fill",
-      "stylers": [{ "color": "#ffffff" }, { "weight": "0.20" }, { "lightness": "0.00" }, { "gamma": "1.00" }]
-    },
-    {
-      "featureType": "all",
-      "elementType": "labels.text.stroke",
-      "stylers": [{ "visibility": "on" }, { "color": "#242f3e" }, { "lightness": 16 }]
-    },
-    {
-      "featureType": "all",
-      "elementType": "labels.icon",
-      "stylers": [{ "visibility": "off" }]
-    },
-    {
-      "featureType": "administrative",
-      "elementType": "geometry.fill",
-      "stylers": [{ "color": "#000000" }, { "lightness": 20 }]
-    },
-    {
-      "featureType": "administrative",
-      "elementType": "geometry.stroke",
-      "stylers": [{ "color": "#000000" }, { "lightness": 17 }, { "weight": 1.2 }]
-    },
-    {
-      "featureType": "landscape",
-      "elementType": "geometry",
-      "stylers": [{ "color": "#242f3e" }]
-    },
-    {
-      "featureType": "poi",
-      "elementType": "geometry",
-      "stylers": [{ "color": "#242f3e" }]
-    },
-    {
-      "featureType": "road.highway",
-      "elementType": "geometry.fill",
-      "stylers": [{ "color": "#746855" }]
-    },
-    {
-      "featureType": "road.highway",
-      "elementType": "geometry.stroke",
-      "stylers": [{ "color": "#1f2835" }]
-    },
-    {
-      "featureType": "road.arterial",
-      "elementType": "geometry",
-      "stylers": [{ "color": "#38414e" }]
-    },
-    {
-      "featureType": "road.local",
-      "elementType": "geometry",
-      "stylers": [{ "color": "#38414e" }]
-    },
-    {
-      "featureType": "transit",
-      "elementType": "geometry",
-      "stylers": [{ "color": "#2f3948" }]
-    },
-    {
-      "featureType": "water",
-      "elementType": "geometry",
-      "stylers": [{ "color": "#17263c" }]
-    }
-  ]
-};
+// Component to programmatically change map center
+function MapController({ center }: { center: { lat: number, lng: number } }) {
+  const map = useMap();
+  useEffect(() => {
+    map.flyTo([center.lat, center.lng], map.getZoom(), { animate: true });
+  }, [center, map]);
+  
+  // Also handle resize for layout shifts
+  useEffect(() => {
+    map.invalidateSize();
+  }, [map]);
+  return null;
+}
 
 interface LiveMapProps {
   activeAlertId: string | null;
@@ -96,14 +31,8 @@ export default function LiveMap({ activeAlertId, location }: LiveMapProps) {
   const [center, setCenter] = useState(location || { lat: 20.5937, lng: 78.9629 }); // Default to India center
   const [userLocation, setUserLocation] = useState<any>(location);
   const [activeAlerts, setActiveAlerts] = useState<any[]>([]);
-  const [selectedAlert, setSelectedAlert] = useState<any>(null);
   const [isSavingSnapshot, setIsSavingSnapshot] = useState(false);
   const [snapshotSuccess, setSnapshotSuccess] = useState(false);
-
-  const { isLoaded } = useJsApiLoader({
-    id: 'google-map-script',
-    googleMapsApiKey: (import.meta as any).env.VITE_GOOGLE_MAPS_API_KEY || 'AIzaSyCJxnNrOSPk-WROL3KJHynYMObiCatsIjY'
-  });
 
   useEffect(() => {
     // Get initial position
@@ -115,8 +44,7 @@ export default function LiveMap({ activeAlertId, location }: LiveMapProps) {
           setUserLocation(loc);
         },
         (err) => {
-          const errorMsg = err.code === 1 ? "Permission denied" : err.code === 2 ? "Position unavailable" : err.code === 3 ? "Timeout" : "Unknown error";
-          console.error(`Geolocation error: ${errorMsg} (${err.message})`);
+          console.error(`Geolocation error: ${err.message}`);
         }
       );
     }
@@ -157,16 +85,6 @@ export default function LiveMap({ activeAlertId, location }: LiveMapProps) {
     };
   }, []);
 
-  const [map, setMap] = useState<google.maps.Map | null>(null);
-
-  const onLoad = useCallback(function callback(map: google.maps.Map) {
-    setMap(map);
-  }, []);
-
-  const onUnmount = useCallback(function callback(map: google.maps.Map) {
-    setMap(null);
-  }, []);
-
   const handleSaveSnapshot = async () => {
     if (!userLocation) return;
     
@@ -200,22 +118,10 @@ export default function LiveMap({ activeAlertId, location }: LiveMapProps) {
     }
   };
 
-  if (!isLoaded) {
-    return (
-      <div className="h-screen w-full flex flex-col items-center justify-center bg-slate-950 p-6 text-center">
-        <Loader2 className="w-10 h-10 text-primary animate-spin mb-4" />
-        <h2 className="text-white font-bold text-xl mb-2">Loading Live Map...</h2>
-        <p className="text-slate-400 text-sm max-w-md">
-          If this takes too long, ensure the <span className="text-primary font-mono">Maps JavaScript API</span> is enabled in your Google Cloud Console.
-        </p>
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen bg-slate-950">
+    <div className="min-h-screen bg-slate-950 flex flex-col">
       {/* Header */}
-      <div className="h-auto min-h-[5rem] py-4 bg-slate-900/50 backdrop-blur-xl border-b border-white/5 flex flex-col sm:flex-row items-center justify-between px-4 sm:px-8 gap-4">
+      <div className="h-auto min-h-[5rem] py-4 flex-shrink-0 bg-slate-900/50 backdrop-blur-xl border-b border-white/5 flex flex-col sm:flex-row items-center justify-between px-4 sm:px-8 gap-4 z-10">
         <div className="flex items-center gap-3 sm:gap-4 w-full sm:w-auto">
           <button 
             onClick={() => navigate('/dashboard')}
@@ -259,70 +165,78 @@ export default function LiveMap({ activeAlertId, location }: LiveMapProps) {
       </div>
 
       {/* Map Container */}
-      <div className="relative">
-        <GoogleMap
-          mapContainerStyle={containerStyle}
-          center={center}
+      <div className="relative flex-1 z-0 w-full" style={{ height: 'calc(100vh - 80px)' }}>
+        <MapContainer
+          center={[center.lat, center.lng]}
           zoom={13}
-          onLoad={onLoad}
-          onUnmount={onUnmount}
-          options={mapOptions as any}
+          scrollWheelZoom={true}
+          style={{ width: '100%', height: '100%', zIndex: 0 }}
         >
+          <MapController center={center} />
+          
+          {/* Dark map tiles matching the previous Google Maps styling as closely as possible */}
+          <TileLayer
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+            url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+          />
+
           {/* User Location Marker */}
           {userLocation && (
-            <Marker
-              position={userLocation}
-              icon={{
-                path: google.maps.SymbolPath.CIRCLE,
-                scale: 10,
-                fillColor: "#3b82f6",
+            <CircleMarker
+              center={[userLocation.lat, userLocation.lng]}
+              radius={8}
+              pathOptions={{
+                color: '#ffffff',
+                fillColor: '#3b82f6',
                 fillOpacity: 1,
-                strokeWeight: 2,
-                strokeColor: "#ffffff",
+                weight: 2
               }}
-              title="Your Location"
-            />
+            >
+              <Popup className="rounded-xl">
+                <div className="p-1 font-sans">
+                  <h3 className="font-bold text-slate-800 text-sm">Your Location</h3>
+                </div>
+              </Popup>
+            </CircleMarker>
           )}
 
           {/* Active Alert Markers */}
           {activeAlerts.map((alert) => (
-            <Marker
+            <CircleMarker
               key={alert.id}
-              position={{ lat: alert.lat, lng: alert.lng }}
-              onClick={() => setSelectedAlert(alert)}
-              icon={{
-                url: 'https://maps.google.com/mapfiles/ms/icons/red-dot.png',
-                scaledSize: new google.maps.Size(40, 40)
+              center={[alert.lat, alert.lng]}
+              radius={10}
+              pathOptions={{
+                color: '#ef4444',
+                fillColor: '#ef4444',
+                fillOpacity: 0.8,
+                weight: 2,
+                className: 'animate-pulse'
               }}
-            />
-          ))}
-
-          {selectedAlert && (
-            <InfoWindow
-              position={{ lat: selectedAlert.lat, lng: selectedAlert.lng }}
-              onCloseClick={() => setSelectedAlert(null)}
             >
-              <div className="p-2 min-w-[200px]">
-                <h3 className="font-bold text-slate-900">{selectedAlert.name}</h3>
-                <p className="text-xs text-slate-600 mt-1">{selectedAlert.message}</p>
-                <div className="mt-3 flex items-center justify-between">
-                  <span className="text-[10px] uppercase tracking-wider font-black text-red-500 bg-red-50 px-2 py-1 rounded">
-                    SOS Active
-                  </span>
-                  <button 
-                    className="text-[10px] font-bold text-blue-600 hover:underline"
-                    onClick={() => setCenter({ lat: selectedAlert.lat, lng: selectedAlert.lng })}
-                  >
-                    Focus
-                  </button>
+               <Popup className="rounded-xl font-sans">
+                <div className="p-1 min-w-[200px]">
+                  <h3 className="font-bold text-slate-800 text-sm">{alert.name || 'Anonymous User'}</h3>
+                  <p className="text-xs text-slate-600 mt-1 mb-2 leading-relaxed">{alert.message}</p>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] uppercase tracking-wider font-black text-red-500 bg-red-50 px-2 py-1 rounded">
+                      SOS Active
+                    </span>
+                    <button 
+                      className="text-[10px] font-bold text-blue-600 hover:underline"
+                      onClick={() => setCenter({ lat: alert.lat, lng: alert.lng })}
+                    >
+                      Focus
+                    </button>
+                  </div>
                 </div>
-              </div>
-            </InfoWindow>
-          )}
-        </GoogleMap>
+              </Popup>
+            </CircleMarker>
+          ))}
+        </MapContainer>
 
         {/* Floating Controls */}
-        <div className="absolute bottom-8 right-8 flex flex-col gap-4">
+        <div className="absolute bottom-8 right-8 flex flex-col gap-4 z-10">
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
