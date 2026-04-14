@@ -1474,8 +1474,8 @@ export default function App() {
 
   const enableHardwareTriggers = async () => {
     try {
-      const DME = DeviceMotionEvent as any;
-      if (typeof DME.requestPermission === 'function') {
+      const DME = typeof window !== 'undefined' ? (window as any).DeviceMotionEvent : undefined;
+      if (DME && typeof DME.requestPermission === 'function') {
         const perm = await DME.requestPermission();
         if (perm === 'granted') {
           setHardwareEnabled(true);
@@ -1495,8 +1495,8 @@ export default function App() {
 
   // Try auto-enabling for Android/Desktop where permission is not explicitly required via a Promise
   useEffect(() => {
-    const DME = DeviceMotionEvent as any;
-    if (typeof DME.requestPermission !== 'function') {
+    const DME = typeof window !== 'undefined' ? (window as any).DeviceMotionEvent : undefined;
+    if (!DME || typeof DME.requestPermission !== 'function') {
       setHardwareEnabled(true);
     }
   }, []);
