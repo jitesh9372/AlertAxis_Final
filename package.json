@@ -17,6 +17,7 @@
     "@react-google-maps/api": "^2.20.8",
     "@supabase/supabase-js": "^2.99.3",
     "@tailwindcss/vite": "^4.1.14",
+    "@turf/turf": "^7.3.4",
     "@types/uuid": "^10.0.0",
     "@vitejs/plugin-react": "^5.0.4",
     "clsx": "^2.1.1",

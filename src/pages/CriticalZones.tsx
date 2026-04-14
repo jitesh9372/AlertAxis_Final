@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../supabaseClient';
 import { motion } from 'framer-motion';
-import { MapContainer, TileLayer, CircleMarker, Popup, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, GeoJSON, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
-import { Map as MapIcon, Loader2, AlertTriangle, Info, Clock } from 'lucide-react';
+import { Map as MapIcon, Loader2 } from 'lucide-react';
+import { point, booleanPointInPolygon } from '@turf/turf';
 
 // Component to dynamically resize/fit bounds if we wanted to, but we'll default to India
 function MapFocus() {
@@ -20,6 +21,16 @@ function MapFocus() {
 export default function CriticalZones() {
   const [loading, setLoading] = useState(true);
   const [alerts, setAlerts] = useState<any[]>([]);
+  const [geoData, setGeoData] = useState<any>(null);
+  const [stateSeverityMap, setStateSeverityMap] = useState<Record<string, string>>({});
+
+  // Fetch GeoJSON for India States
+  useEffect(() => {
+    fetch('/india_states.geojson')
+      .then(res => res.json())
+      .then(data => setGeoData(data))
+      .catch(err => console.error("Error loading india_states.geojson", err));
+  }, []);
 
   useEffect(() => {
     const fetchAlerts = async () => {
@@ -95,16 +106,84 @@ export default function CriticalZones() {
     };
   }, []);
 
-  const getMarkerOptions = (severity: string) => {
-    switch (severity) {
-      case 'critical':
-        return { color: '#ef4444', fillColor: '#ef4444', radius: 12, className: 'animate-pulse' };
-      case 'high':
-        return { color: '#f97316', fillColor: '#f97316', radius: 8 };
-      case 'low':
-      default:
-        return { color: '#10b981', fillColor: '#10b981', radius: 5 };
-    }
+  // Compute Spatial Check (Points within Polygons)
+  useEffect(() => {
+    if (!geoData || alerts.length === 0) return;
+
+    const severityMap: Record<string, string> = {};
+
+    geoData.features.forEach((feature: any) => {
+      // Different geojson representations use different property labels
+      const stateName = feature.properties.NAME_1 || feature.properties.st_nm || feature.properties.name || "Unknown State";
+      
+      let highestSev = 'none';
+
+      for (const alert of alerts) {
+        if (!alert.lat || !alert.lng) continue;
+        
+        // Turf uses [longitude, latitude] geometry formatting
+        const pt = point([alert.lng, alert.lat]);
+        
+        try {
+          if (booleanPointInPolygon(pt, feature)) {
+            if (alert.severity === 'critical') {
+              highestSev = 'critical';
+              break; // critical is highest, no need to keep checking this state
+            } else if (alert.severity === 'high' && highestSev !== 'critical') {
+              highestSev = 'high';
+            } else if (alert.severity === 'low' && highestSev === 'none') {
+              highestSev = 'low';
+            }
+          }
+        } catch (e) {
+          // Ignore malformed polygon geometries during check
+        }
+      }
+      
+      severityMap[stateName] = highestSev;
+    });
+
+    setStateSeverityMap(severityMap);
+  }, [geoData, alerts]);
+
+  // Leaflet Polygon Styling Function
+  const getStyle = (feature: any) => {
+    const stateName = feature.properties.NAME_1 || feature.properties.st_nm || feature.properties.name || "Unknown";
+    const severity = stateSeverityMap[stateName] || 'none';
+
+    let fillColor = '#e2e8f0'; // Safe/Blank Slate default
+    
+    if (severity === 'critical') fillColor = '#ef4444'; // Red
+    else if (severity === 'high') fillColor = '#f97316'; // Orange
+    else if (severity === 'low') fillColor = '#10b981'; // Green
+
+    return {
+      fillColor,
+      weight: 1,
+      opacity: 1,
+      color: '#cbd5e1', // Slate-300 border
+      fillOpacity: severity === 'none' ? 0.2 : 0.6
+    };
+  };
+
+  // Popup logic
+  const onEachFeature = (feature: any, layer: any) => {
+    const stateName = feature.properties.NAME_1 || feature.properties.st_nm || feature.properties.name || "Unknown";
+    const severity = stateSeverityMap[stateName] || 'none';
+    
+    let statusText = "No Reports";
+    if (severity === 'critical') statusText = "CRITICAL RISK (Ongoing > 5m)";
+    else if (severity === 'high') statusText = "HIGH RISK (Active)";
+    else if (severity === 'low') statusText = "SAFE ZONE (Resolved)";
+
+    const popupContent = `
+      <div class="font-sans px-2 py-1 min-w-[140px]">
+        <strong class="text-sm text-slate-800">${stateName}</strong><br/>
+        <span class="text-[10px] uppercase tracking-wider font-bold mt-1 block ${severity === 'none' ? 'text-slate-400' : 'text-slate-700'}">${statusText}</span>
+      </div>
+    `;
+
+    layer.bindPopup(popupContent);
   };
 
   return (
@@ -130,14 +209,17 @@ export default function CriticalZones() {
         transition={{ delay: 0.2 }}
         className="flex flex-wrap gap-4 mb-4"
       >
-        <div className="flex items-center gap-2 bg-red-50 text-red-700 px-3 py-1.5 rounded-lg border border-red-200 text-sm font-bold">
-          <div className="w-3 h-3 rounded-full bg-red-500 animate-pulse" /> Critical Risk (Ongoing &gt; 5m)
+        <div className="flex items-center gap-2 bg-red-50 text-red-700 px-3 py-1.5 rounded-lg border border-red-200 text-sm font-bold shadow-sm">
+          <div className="w-4 h-4 rounded-sm bg-red-500 animate-pulse border border-red-600" /> Critical Risk (Ongoing &gt; 5m)
         </div>
-        <div className="flex items-center gap-2 bg-orange-50 text-orange-700 px-3 py-1.5 rounded-lg border border-orange-200 text-sm font-bold">
-          <div className="w-3 h-3 rounded-full bg-orange-500" /> High Risk (Active)
+        <div className="flex items-center gap-2 bg-orange-50 text-orange-700 px-3 py-1.5 rounded-lg border border-orange-200 text-sm font-bold shadow-sm">
+          <div className="w-4 h-4 rounded-sm bg-orange-500 border border-orange-600" /> High Risk (Active)
         </div>
-        <div className="flex items-center gap-2 bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-lg border border-emerald-200 text-sm font-bold">
-          <div className="w-3 h-3 rounded-full bg-emerald-500" /> Safe Zone (Resolved)
+        <div className="flex items-center gap-2 bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-lg border border-emerald-200 text-sm font-bold shadow-sm">
+          <div className="w-4 h-4 rounded-sm bg-emerald-500 border border-emerald-600" /> Safe Zone (Resolved)
+        </div>
+        <div className="flex items-center gap-2 bg-slate-50 text-slate-700 px-3 py-1.5 rounded-lg border border-slate-200 text-sm font-bold shadow-sm">
+          <div className="w-4 h-4 rounded-sm bg-slate-200 border border-slate-300" /> No Reports
         </div>
       </motion.div>
 
@@ -151,47 +233,25 @@ export default function CriticalZones() {
         )}
         
         <MapContainer 
-          center={[20.5937, 78.9629]} 
-          zoom={5} 
+          center={[22.5937, 78.9629]} 
+          zoom={4.5} 
           scrollWheelZoom={true}
-          style={{ height: '100%', width: '100%', zIndex: 0, borderRadius: '0.75rem' }}
+          style={{ height: '100%', width: '100%', zIndex: 0, borderRadius: '0.75rem', background: '#f8fafc' }}
         >
           <MapFocus />
           <TileLayer
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-            url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+            url="https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png"
           />
           
-          {alerts.map((alert) => (
-            <CircleMarker
-              key={alert.id}
-              center={[alert.lat, alert.lng]}
-              pathOptions={{
-                ...getMarkerOptions(alert.severity),
-                fillOpacity: 0.6,
-                weight: 2
-              }}
-            >
-              <Popup className="rounded-xl font-sans">
-                <div className="p-1 min-w-[200px]">
-                  <h3 className="font-bold text-slate-800 text-sm flex items-center justify-between mb-1">
-                    {alert.name || 'Anonymous User'}
-                    {alert.severity === 'critical' && <AlertTriangle className="w-4 h-4 text-red-500 inline" />}
-                  </h3>
-                  <p className="text-xs text-slate-600 mb-2 leading-relaxed">{alert.message}</p>
-                  
-                  <div className="flex items-center gap-2 text-[10px] text-slate-500 font-mono bg-slate-50 p-2 rounded">
-                    <Info className="w-3 h-3" />
-                    Status: <span className="uppercase font-bold text-slate-700">{alert.status}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-[10px] text-slate-500 font-mono mt-1 px-2">
-                    <Clock className="w-3 h-3" />
-                    {new Date(alert.created_at).toLocaleString()}
-                  </div>
-                </div>
-              </Popup>
-            </CircleMarker>
-          ))}
+          {geoData && Object.keys(stateSeverityMap).length > 0 && (
+            <GeoJSON 
+              data={geoData} 
+              style={getStyle}
+              onEachFeature={onEachFeature}
+            />
+          )}
+
         </MapContainer>
       </div>
     </div>
