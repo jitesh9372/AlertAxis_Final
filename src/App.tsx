@@ -995,6 +995,7 @@ export default function App() {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const watchIdRef = useRef<number | null>(null);
+  const recordingStreamRef = useRef<MediaStream | null>(null);
 
   // Siren and Flash Refs
   const audioCtxRef = useRef<AudioContext | null>(null);
@@ -1277,20 +1278,40 @@ export default function App() {
     }
 
     try {
-      // Try to reuse an existing stream if present, otherwise fetch a new one securely
-      let stream = streamRef.current;
-      if (!stream) {
+      // Always create a DEDICATED recording stream (never reuse the flash/torch stream)
+      // The flash stream uses the back camera for torch; recording uses front camera + audio
+      let stream: MediaStream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          audio: true,
+          video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } }
+        });
+      } catch {
         try {
-          // Attempt asking for both audio and video
+          // Try any camera if front camera unavailable
           stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
-        } catch (mediaErr) {
-          console.warn("Video+Audio request failed, falling back to Audio ONLY:", mediaErr);
-          // High chance of hardware conflict or iOS limitation, fallback to Audio Only
+        } catch {
+          // Final fallback: audio only
+          console.warn('Video unavailable, recording audio only');
           stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         }
       }
-      
-      const recorder = new MediaRecorder(stream);
+      recordingStreamRef.current = stream;
+
+      // Pick best supported mime type for cross-device compatibility
+      const mimeTypes = [
+        'video/webm;codecs=vp9,opus',
+        'video/webm;codecs=vp8,opus',
+        'video/webm',
+        'video/mp4',
+        'audio/webm;codecs=opus',
+        'audio/webm',
+        'audio/ogg',
+      ];
+      const mimeType = mimeTypes.find(m => MediaRecorder.isTypeSupported(m)) || '';
+      const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+      const blobMime = mimeType || 'video/webm';
+
       mediaRecorderRef.current = recorder;
       audioChunksRef.current = [];
       
@@ -1301,13 +1322,14 @@ export default function App() {
       recorder.onstart = () => setIsRecording(true);
       recorder.onstop = async () => {
         setIsRecording(false);
-        // Only stop tracks if we aren't using the shared SOS stream
-        if (!activeAlertId) {
-          stream.getTracks().forEach(track => track.stop());
+        // Always stop the dedicated recording stream tracks
+        if (recordingStreamRef.current) {
+          recordingStreamRef.current.getTracks().forEach(track => track.stop());
+          recordingStreamRef.current = null;
         }
 
         if (audioChunksRef.current.length > 0 && user) {
-          const blob = new Blob(audioChunksRef.current, { type: 'video/webm' });
+          const blob = new Blob(audioChunksRef.current, { type: blobMime });
           try {
             const path = await uploadFile({
               featureName: 'evidence',
