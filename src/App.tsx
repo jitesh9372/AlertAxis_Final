@@ -984,6 +984,8 @@ export default function App() {
 
   // Trigger notification toast
   const [triggerToast, setTriggerToast] = useState<{ message: string; icon: string } | null>(null);
+  const [hardwareEnabled, setHardwareEnabled] = useState(false);
+  const [hardwareMsg, setHardwareMsg] = useState('');
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -1415,136 +1417,136 @@ export default function App() {
   const handleSiren = React.useCallback(() => setIsSirenActive(prev => !prev), []);
   const handleFlash = React.useCallback(() => setIsFlashActive(prev => !prev), []);
 
-  // Keep activeAlertIdRef in sync so gesture handlers can read it without stale closures
+  // ── SHAKE DETECTION via DeviceMotion API (Standard Algorithm) ─────────────
   useEffect(() => {
-    activeAlertIdRef.current = activeAlertId;
-  }, [activeAlertId]);
+    if (!hardwareEnabled) return;
 
-  // Show and auto-dismiss trigger toast
-  const showTriggerToast = React.useCallback((message: string, icon: string) => {
-    setTriggerToast({ message, icon });
-    const t = setTimeout(() => setTriggerToast(null), 4000);
-    return () => clearTimeout(t);
-  }, []);
-
-  // ── SHAKE DETECTION via DeviceMotion API ──────────────────────────────────
-  useEffect(() => {
-    // Lowered threshold to 15 m/s² and shakes to 4 for easier triggering on typical devices
-    const SHAKE_THRESHOLD = 15;   
-    const SHAKE_COUNT_NEEDED = 4; 
-    const SHAKE_WINDOW_MS = 2500; 
-
-    let lastAccel = { x: 0, y: 0, z: 0 };
+    const SHAKE_THRESHOLD = 800; // Classic shake intensity threshold
+    let lastX = 0, lastY = 0, lastZ = 0;
+    let lastUpdate = 0;
+    let shakeCount = 0;
+    let lastShakeTime = 0;
 
     const handleMotion = (e: DeviceMotionEvent) => {
-      const acc = e.accelerationIncludingGravity || e.acceleration;
-      if (!acc) return;
+      const current = e.accelerationIncludingGravity || e.acceleration;
+      if (!current) return;
       
-      const x = acc.x ?? 0;
-      const y = acc.y ?? 0;
-      const z = acc.z ?? 0;
+      const currentTime = Date.now();
+      const diffTime = currentTime - lastUpdate;
+      
+      if (diffTime > 100) {
+        lastUpdate = currentTime;
 
-      const dx = Math.abs(x - lastAccel.x);
-      const dy = Math.abs(y - lastAccel.y);
-      const dz = Math.abs(z - lastAccel.z);
-      lastAccel = { x, y, z };
+        const x = current.x || 0;
+        const y = current.y || 0;
+        const z = current.z || 0;
 
-      const magnitude = Math.sqrt(dx * dx + dy * dy + dz * dz);
+        // Speed of movement
+        const speed = Math.abs(x + y + z - lastX - lastY - lastZ) / diffTime * 10000;
 
-      if (magnitude > SHAKE_THRESHOLD) {
-        const now = Date.now();
-        shakeTimestampsRef.current.push(now);
-        // Prune old timestamps outside the window
-        shakeTimestampsRef.current = shakeTimestampsRef.current.filter(
-          ts => now - ts <= SHAKE_WINDOW_MS
-        );
+        if (speed > SHAKE_THRESHOLD) {
+          const now = Date.now();
+          if (now - lastShakeTime < 1000) {
+            shakeCount++;
+          } else {
+            shakeCount = 1;
+          }
+          lastShakeTime = now;
 
-        if (shakeTimestampsRef.current.length >= SHAKE_COUNT_NEEDED) {
-          shakeTimestampsRef.current = []; // reset counter
-          if (!activeAlertIdRef.current) {
-            showTriggerToast('🔔 SOS triggered by phone shake!', '📳');
-            handleSOS();
+          if (shakeCount >= 4) {
+            shakeCount = 0;
+            if (!activeAlertIdRef.current) {
+              showTriggerToast('🔔 SOS triggered by phone shake!', '📳');
+              handleSOS();
+            }
           }
         }
+        lastX = x;
+        lastY = y;
+        lastZ = z;
       }
     };
 
-    // Global initializer on first user interaction (Solves iOS 13+ permission restriction)
-    const initDeviceMotion = async () => {
+    window.addEventListener('devicemotion', handleMotion);
+    return () => window.removeEventListener('devicemotion', handleMotion);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hardwareEnabled, showTriggerToast]);
+
+  const enableHardwareTriggers = async () => {
+    try {
       const DME = DeviceMotionEvent as any;
       if (typeof DME.requestPermission === 'function') {
-        try {
-          const perm = await DME.requestPermission();
-          if (perm === 'granted') {
-            window.addEventListener('devicemotion', handleMotion);
-          }
-        } catch (e) {
-          console.error("DeviceMotion Request Rejected", e);
+        const perm = await DME.requestPermission();
+        if (perm === 'granted') {
+          setHardwareEnabled(true);
+          setHardwareMsg('Shake enabled ✅');
+        } else {
+          setHardwareMsg('Permission denied ❌');
         }
       } else {
-        window.addEventListener('devicemotion', handleMotion);
+        // Non-iOS or older devices that don't require permission explicitly
+        setHardwareEnabled(true);
+        setHardwareMsg('Shake enabled ✅');
       }
-      
-      // Clean up the initializers once triggered successfully
-      document.removeEventListener('click', initDeviceMotion);
-      document.removeEventListener('touchstart', initDeviceMotion);
-    };
+    } catch (e: any) {
+      setHardwareMsg('Failed to enable: ' + e.message);
+    }
+  };
 
-    // Attach interaction listeners to bootstrap permissions on mobile
-    document.addEventListener('click', initDeviceMotion);
-    document.addEventListener('touchstart', initDeviceMotion, { passive: true });
-
-    // Also try immediately in case it's Android/Desktop where permission is granted by default
+  // Try auto-enabling for Android/Desktop where permission is not explicitly required via a Promise
+  useEffect(() => {
     const DME = DeviceMotionEvent as any;
     if (typeof DME.requestPermission !== 'function') {
-      window.addEventListener('devicemotion', handleMotion);
+      setHardwareEnabled(true);
     }
-
-    return () => {
-      window.removeEventListener('devicemotion', handleMotion);
-      document.removeEventListener('click', initDeviceMotion);
-      document.removeEventListener('touchstart', initDeviceMotion);
-    };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showTriggerToast]);
+  }, []);
 
   // ── VOLUME BUTTON LONG PRESS DETECTION (3s) ───────────────────────────────
   useEffect(() => {
-    let volumeHoldTimer: NodeJS.Timeout | null = null;
+    let holdTimer: NodeJS.Timeout | null = null;
     let isHolding = false;
 
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Capture both VolumeUp & VolumeDown based on standard key codes
-      if (['AudioVolumeUp', 'VolumeUp', 'AudioVolumeDown', 'VolumeDown'].includes(e.key) || e.keyCode === 175 || e.keyCode === 174) {
-        if (!isHolding) {
-          isHolding = true;
-          volumeHoldTimer = setTimeout(() => {
-            if (!activeAlertIdRef.current) {
-              showTriggerToast('🔔 SOS triggered by Volume Button Long Press!', '🔊');
-              handleSOS();
-            }
-          }, 3000); // 3 seconds hold to trigger
-        }
+    const startHold = () => {
+      if (!isHolding) {
+        isHolding = true;
+        holdTimer = setTimeout(() => {
+          if (!activeAlertIdRef.current) {
+            showTriggerToast('🔔 SOS triggered by Volume Button Long Press!', '🔊');
+            handleSOS();
+          }
+        }, 3000); // 3 seconds hold to trigger
       }
     };
 
+    const stopHold = () => {
+      isHolding = false;
+      if (holdTimer) clearTimeout(holdTimer);
+    };
+
+    const isVolumeKey = (e: KeyboardEvent) => {
+      return ['AudioVolumeUp', 'VolumeUp', 'AudioVolumeDown', 'VolumeDown', 'MediaVolumeUp', 'MediaVolumeDown'].includes(e.key) ||
+             [24, 25, 175, 174].includes(e.keyCode);
+    };
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (isVolumeKey(e)) startHold();
+    };
+
     const handleKeyUp = (e: KeyboardEvent) => {
-      if (['AudioVolumeUp', 'VolumeUp', 'AudioVolumeDown', 'VolumeDown'].includes(e.key) || e.keyCode === 175 || e.keyCode === 174) {
-        isHolding = false;
-        if (volumeHoldTimer) {
-          clearTimeout(volumeHoldTimer);
-          volumeHoldTimer = null;
-        }
-      }
+      if (isVolumeKey(e)) stopHold();
     };
 
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('keyup', handleKeyUp);
+    window.addEventListener('blur', stopHold); // stop if app goes background
+    window.addEventListener('contextmenu', stopHold); // stop on press-hold popups
     
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
-      if (volumeHoldTimer) clearTimeout(volumeHoldTimer);
+      window.removeEventListener('blur', stopHold);
+      window.removeEventListener('contextmenu', stopHold);
+      stopHold();
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showTriggerToast]);
@@ -1577,6 +1579,51 @@ export default function App() {
           currentLanguage={language}
           setLanguage={setLanguage}
         />
+
+        {/* Global SOS Banner & Permissions Tracker UI*/}
+        <AnimatePresence>
+          {activeAlertId && (
+            <motion.div
+              initial={{ y: -100 }}
+              animate={{ y: 0 }}
+              exit={{ y: -100 }}
+              className="fixed top-20 left-0 right-0 z-50 px-4 pointer-events-none"
+            >
+              <div className="max-w-md mx-auto bg-red-600 text-white p-4 rounded-2xl shadow-2xl flex items-center justify-between pointer-events-auto border-2 border-red-400">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center animate-pulse">
+                    <Shield className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <p className="font-black uppercase tracking-tighter text-sm">Emergency Active</p>
+                    <p className="text-[10px] opacity-80 font-bold uppercase tracking-widest">Help is on the way</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={handleMarkSafe}
+                  className="bg-white text-red-600 px-4 py-2 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-red-50 transition-colors"
+                >
+                  I am Safe
+                </button>
+              </div>
+            </motion.div>
+          )}
+
+          {!hardwareEnabled && !activeAlertIdRef.current && (
+            <motion.div
+               initial={{ opacity: 0, y: -20 }}
+               animate={{ opacity: 1, y: 0 }}
+               className="fixed top-20 left-4 z-40 pointer-events-auto"
+            >
+              <button 
+                onClick={enableHardwareTriggers} 
+                className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border shadow-lg px-4 py-2 rounded-full font-bold text-xs text-primary flex items-center gap-2 hover:bg-slate-50 transition-all shadow-red-200"
+              >
+                 <Zap className="w-4 h-4 fill-primary" /> Enable Shake-to-SOS
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Screen Flash Overlay */}
         {isScreenFlashOn && (
