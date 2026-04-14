@@ -1854,7 +1854,7 @@ export default function App() {
               {/* Home */}
               <Link to="/" className={cn(
                 "flex flex-col items-center justify-center gap-0.5 text-[10px] font-bold transition-colors",
-                location.pathname === '/' ? 'text-primary' : 'text-slate-400 dark:text-slate-500'
+                window.location.pathname === '/' ? 'text-primary' : 'text-slate-400 dark:text-slate-500'
               )}>
                 <Shield className="w-5 h-5" />
                 <span>Home</span>
@@ -1863,7 +1863,7 @@ export default function App() {
               {/* Dashboard */}
               <Link to="/dashboard" className={cn(
                 "flex flex-col items-center justify-center gap-0.5 text-[10px] font-bold transition-colors",
-                location.pathname === '/dashboard' ? 'text-primary' : 'text-slate-400 dark:text-slate-500'
+                window.location.pathname === '/dashboard' ? 'text-primary' : 'text-slate-400 dark:text-slate-500'
               )}>
                 <LayoutDashboard className="w-5 h-5" />
                 <span>Dashboard</span>
@@ -1872,7 +1872,7 @@ export default function App() {
               {/* Live Map */}
               <Link to="/map" className={cn(
                 "flex flex-col items-center justify-center gap-0.5 text-[10px] font-bold transition-colors",
-                location.pathname === '/map' ? 'text-primary' : 'text-slate-400 dark:text-slate-500'
+                window.location.pathname === '/map' ? 'text-primary' : 'text-slate-400 dark:text-slate-500'
               )}>
                 <MapPin className="w-5 h-5" />
                 <span>Live Map</span>
@@ -1881,7 +1881,7 @@ export default function App() {
               {/* Analytics */}
               <Link to="/analytics" className={cn(
                 "flex flex-col items-center justify-center gap-0.5 text-[10px] font-bold transition-colors",
-                location.pathname === '/analytics' ? 'text-primary' : 'text-slate-400 dark:text-slate-500'
+                window.location.pathname === '/analytics' ? 'text-primary' : 'text-slate-400 dark:text-slate-500'
               )}>
                 <Activity className="w-5 h-5" />
                 <span>Analytics</span>
@@ -1890,7 +1890,7 @@ export default function App() {
               {/* Critical Zones */}
               <Link to="/critical-zones" className={cn(
                 "flex flex-col items-center justify-center gap-0.5 text-[10px] font-bold transition-colors",
-                location.pathname === '/critical-zones' ? 'text-primary' : 'text-slate-400 dark:text-slate-500'
+                window.location.pathname === '/critical-zones' ? 'text-primary' : 'text-slate-400 dark:text-slate-500'
               )}>
                 <MapIcon className="w-5 h-5" />
                 <span>Zones</span>
