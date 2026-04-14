@@ -1,7 +1,7 @@
 -- SQL query to create the alertaxis table in Supabase
 
 -- MIGRATION: If you are switching from instagram_report, you can rename it:
--- ALTER TABLE instagram_report RENAME TO alertaxis;
+-- ALTER TABLE instagram_report RENAME TO alertaxis;  
 
 CREATE TABLE IF NOT EXISTS alertaxis (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),

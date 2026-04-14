@@ -981,6 +981,9 @@ export default function App() {
   const [isFlashActive, setIsFlashActive] = useState(false);
   const [location, setLocation] = useState<{ lat: number, lng: number } | null>(null);
   const [isScreenFlashOn, setIsScreenFlashOn] = useState(false);
+
+  // Trigger notification toast
+  const [triggerToast, setTriggerToast] = useState<{ message: string; icon: string } | null>(null);
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -994,6 +997,11 @@ export default function App() {
   const flashIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
+
+  // Shake & Volume SOS Refs
+  const activeAlertIdRef = useRef<string | null>(null);
+  const shakeTimestampsRef = useRef<number[]>([]);
+  const volumePressTimestampsRef = useRef<number[]>([]);
 
   useEffect(() => {
     // Check initial session
@@ -1407,6 +1415,111 @@ export default function App() {
   const handleSiren = React.useCallback(() => setIsSirenActive(prev => !prev), []);
   const handleFlash = React.useCallback(() => setIsFlashActive(prev => !prev), []);
 
+  // Keep activeAlertIdRef in sync so gesture handlers can read it without stale closures
+  useEffect(() => {
+    activeAlertIdRef.current = activeAlertId;
+  }, [activeAlertId]);
+
+  // Show and auto-dismiss trigger toast
+  const showTriggerToast = React.useCallback((message: string, icon: string) => {
+    setTriggerToast({ message, icon });
+    const t = setTimeout(() => setTriggerToast(null), 4000);
+    return () => clearTimeout(t);
+  }, []);
+
+  // ── SHAKE DETECTION via DeviceMotion API ──────────────────────────────────
+  useEffect(() => {
+    const SHAKE_THRESHOLD = 18;   // m/s² magnitude threshold
+    const SHAKE_COUNT_NEEDED = 5; // consecutive shakes required
+    const SHAKE_WINDOW_MS = 2500; // time window to collect shakes
+
+    let lastAccel = { x: 0, y: 0, z: 0 };
+
+    const handleMotion = (e: DeviceMotionEvent) => {
+      const acc = e.accelerationIncludingGravity;
+      if (!acc) return;
+      const x = acc.x ?? 0;
+      const y = acc.y ?? 0;
+      const z = acc.z ?? 0;
+
+      const dx = Math.abs(x - lastAccel.x);
+      const dy = Math.abs(y - lastAccel.y);
+      const dz = Math.abs(z - lastAccel.z);
+      lastAccel = { x, y, z };
+
+      const magnitude = Math.sqrt(dx * dx + dy * dy + dz * dz);
+
+      if (magnitude > SHAKE_THRESHOLD) {
+        const now = Date.now();
+        shakeTimestampsRef.current.push(now);
+        // Prune old timestamps outside the window
+        shakeTimestampsRef.current = shakeTimestampsRef.current.filter(
+          ts => now - ts <= SHAKE_WINDOW_MS
+        );
+
+        if (shakeTimestampsRef.current.length >= SHAKE_COUNT_NEEDED) {
+          shakeTimestampsRef.current = []; // reset counter
+          if (!activeAlertIdRef.current) {
+            showTriggerToast('🔔 SOS triggered by phone shake!', '📳');
+            handleSOS();
+          }
+        }
+      }
+    };
+
+    // iOS 13+ requires permission
+    const requestAndListen = async () => {
+      const DME = DeviceMotionEvent as any;
+      if (typeof DME.requestPermission === 'function') {
+        try {
+          const perm = await DME.requestPermission();
+          if (perm === 'granted') {
+            window.addEventListener('devicemotion', handleMotion);
+          }
+        } catch {}
+      } else {
+        window.addEventListener('devicemotion', handleMotion);
+      }
+    };
+
+    requestAndListen();
+
+    return () => {
+      window.removeEventListener('devicemotion', handleMotion);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showTriggerToast]);
+
+  // ── VOLUME BUTTON DETECTION (4× VolumeUp within 3 s) ────────────────────
+  useEffect(() => {
+    const VOLUME_PRESSES_NEEDED = 4;
+    const VOLUME_WINDOW_MS = 3000;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // MediaTrackUp fires on some Android browsers / desktop media keys
+      if (e.key === 'AudioVolumeUp' || e.key === 'VolumeUp' || e.code === 'AudioVolumeUp') {
+        e.preventDefault();
+        const now = Date.now();
+        volumePressTimestampsRef.current.push(now);
+        volumePressTimestampsRef.current = volumePressTimestampsRef.current.filter(
+          ts => now - ts <= VOLUME_WINDOW_MS
+        );
+
+        if (volumePressTimestampsRef.current.length >= VOLUME_PRESSES_NEEDED) {
+          volumePressTimestampsRef.current = [];
+          if (!activeAlertIdRef.current) {
+            showTriggerToast('🔔 SOS triggered by Volume Button (4×)!', '🔊');
+            handleSOS();
+          }
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showTriggerToast]);
+
   useEffect(() => {
     if (darkMode) {
       document.documentElement.classList.add('dark');
@@ -1440,6 +1553,25 @@ export default function App() {
         {isScreenFlashOn && (
           <div className="pointer-events-none fixed inset-0 z-[100] bg-red-600/40 border-[8px] sm:border-[16px] border-red-600 transition-none" />
         )}
+
+        {/* Gesture SOS Trigger Toast */}
+        <AnimatePresence>
+          {triggerToast && (
+            <motion.div
+              key="trigger-toast"
+              initial={{ opacity: 0, y: 60, scale: 0.9 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 60, scale: 0.9 }}
+              transition={{ type: 'spring', stiffness: 400, damping: 28 }}
+              className="fixed bottom-28 left-1/2 -translate-x-1/2 z-[200] pointer-events-none"
+            >
+              <div className="flex items-center gap-3 bg-red-600 text-white px-5 py-3 rounded-2xl shadow-2xl border-2 border-red-400 whitespace-nowrap">
+                <span className="text-2xl">{triggerToast.icon}</span>
+                <span className="font-black text-sm tracking-tight">{triggerToast.message}</span>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
         
         <Chatbot currentLanguage={language} />
         
