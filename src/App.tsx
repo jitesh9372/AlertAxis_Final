@@ -257,51 +257,122 @@ const Navbar = ({ darkMode, toggleDarkMode, user, currentLanguage, setLanguage }
   );
 };
 
-const FeatureCard = React.memo(({ icon: Icon, title, description, active, onClick }: { icon: any, title: string, description: string, active?: boolean, onClick?: () => void }) => (
-  <button 
-    onClick={onClick}
-    className={cn(
-      "glass-card p-6 rounded-3xl transition-all duration-300 text-left w-full group relative overflow-hidden",
-      active 
-        ? "border-primary ring-4 ring-primary/10 bg-red-50/80 dark:bg-red-900/20" 
-        : "hover:scale-[1.02] hover:shadow-2xl hover:shadow-slate-200/60 dark:hover:shadow-black/40"
-    )}
-  >
-    {active && (
-      <div className="absolute top-4 right-4 flex items-center gap-1.5 bg-primary/10 px-2 py-1 rounded-full">
-        <span className="w-1.5 h-1.5 bg-primary rounded-full animate-pulse" />
-        <span className="text-[10px] font-bold text-primary uppercase tracking-wider">Active</span>
-      </div>
-    )}
-    <div className={cn(
-      "w-12 h-12 rounded-2xl flex items-center justify-center mb-4 transition-all duration-300",
-      active 
-        ? "bg-primary text-white shadow-lg shadow-red-500/40" 
-        : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 group-hover:bg-primary group-hover:text-white group-hover:shadow-lg group-hover:shadow-red-500/30"
-    )}>
-      <Icon className="w-6 h-6" />
-    </div>
-    <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2 group-hover:text-primary transition-colors">{title}</h3>
-    <p className="text-slate-500 dark:text-slate-400 text-sm leading-relaxed">{description}</p>
-  </button>
-));
+const FeatureCard = React.memo(({ icon: Icon, title, description, active, onClick, theme = "primary" }: { icon: any, title: string, description: string, active?: boolean, onClick?: () => void, theme?: "primary" | "emerald" | "purple" | "blue" }) => {
+  const themes = {
+    primary: {
+      border: "border-primary/20 hover:border-primary",
+      bg: "bg-red-50/10 dark:bg-red-900/5",
+      iconBg: "bg-red-100 dark:bg-red-900/30 text-primary group-hover:bg-primary group-hover:text-white shadow-inner group-hover:shadow-red-500/40",
+      textColor: "group-hover:text-primary",
+      glowBg: "bg-primary/5 group-hover:bg-primary/10"
+    },
+    emerald: {
+      border: "border-emerald-500/20 hover:border-emerald-500",
+      bg: "bg-emerald-50/10 dark:bg-emerald-900/5",
+      iconBg: "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-500 group-hover:bg-emerald-500 group-hover:text-white shadow-inner group-hover:shadow-emerald-500/40",
+      textColor: "group-hover:text-emerald-500",
+      glowBg: "bg-emerald-500/5 group-hover:bg-emerald-500/10"
+    },
+    purple: {
+      border: "border-purple-500/20 hover:border-purple-500",
+      bg: "bg-purple-50/10 dark:bg-purple-900/5",
+      iconBg: "bg-purple-100 dark:bg-purple-900/30 text-purple-500 group-hover:bg-purple-500 group-hover:text-white shadow-inner group-hover:shadow-purple-500/40",
+      textColor: "group-hover:text-purple-500",
+      glowBg: "bg-purple-500/5 group-hover:bg-purple-500/10"
+    },
+    blue: {
+      border: "border-blue-500/20 hover:border-blue-500",
+      bg: "bg-blue-50/10 dark:bg-blue-900/5",
+      iconBg: "bg-blue-100 dark:bg-blue-900/30 text-blue-500 group-hover:bg-blue-500 group-hover:text-white shadow-inner group-hover:shadow-blue-500/40",
+      textColor: "group-hover:text-blue-500",
+      glowBg: "bg-blue-500/5 group-hover:bg-blue-500/10"
+    }
+  };
 
-const EmergencyButton = React.memo(({ number, label, icon: Icon }: { number: string, label: string, icon: any }) => (
-  <motion.a 
-    href={`tel:${number}`}
-    whileHover={{ scale: 1.05, y: -5 }}
-    whileTap={{ scale: 0.95 }}
-    className="flex flex-col items-center justify-center p-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[32px] hover:border-primary hover:shadow-2xl hover:shadow-red-500/10 transition-all group relative overflow-hidden"
-  >
-    <div className="absolute top-0 right-0 w-24 h-24 bg-red-500/5 rounded-full -mr-12 -mt-12 group-hover:bg-red-500/10 transition-colors" />
-    <div className="w-14 h-14 bg-slate-50 dark:bg-slate-800 rounded-2xl flex items-center justify-center mb-3 group-hover:bg-primary group-hover:text-white transition-all duration-300 shadow-sm group-hover:shadow-lg group-hover:shadow-red-500/40">
-      <Icon className="text-slate-600 dark:text-slate-400 w-7 h-7 group-hover:text-white transition-colors" />
-    </div>
-    <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] mb-1">{label}</span>
-    <span className="text-2xl font-black text-slate-900 dark:text-white tracking-tighter">{number}</span>
-    <div className="mt-2 w-8 h-1 bg-slate-200 dark:bg-slate-800 rounded-full group-hover:w-12 group-hover:bg-primary transition-all" />
-  </motion.a>
-));
+  const t = themes[theme];
+
+  return (
+    <button 
+      onClick={onClick}
+      className={cn(
+        "glass-card p-6 rounded-3xl transition-all duration-300 text-left w-full group relative overflow-hidden border",
+        t.bg, t.border,
+        active 
+          ? "border-primary ring-4 ring-primary/10 bg-red-50/80 dark:bg-red-900/20" 
+          : "hover:scale-[1.02] hover:shadow-2xl hover:shadow-slate-200/60 dark:hover:shadow-black/40"
+      )}
+    >
+      {active && (
+        <div className="absolute top-4 right-4 flex items-center gap-1.5 bg-primary/10 px-2 py-1 rounded-full">
+          <span className="w-1.5 h-1.5 bg-primary rounded-full animate-pulse" />
+          <span className="text-[10px] font-bold text-primary uppercase tracking-wider">Active</span>
+        </div>
+      )}
+      <div className={cn("absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity bg-gradient-to-br from-transparent", t.glowBg)} />
+      <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center mb-4 transition-all duration-300", t.iconBg, active && "bg-primary text-white shadow-lg shadow-red-500/40")}>
+        <Icon className="w-7 h-7" />
+      </div>
+      <h3 className={cn("text-lg font-bold text-slate-900 dark:text-white mb-2 transition-colors", t.textColor)}>{title}</h3>
+      <p className="text-slate-500 dark:text-slate-400 text-sm leading-relaxed">{description}</p>
+    </button>
+  );
+});
+
+const EmergencyButton = React.memo(({ number, label, icon: Icon, theme = "slate" }: { number: string, label: string, icon: any, theme?: "blue" | "rose" | "amber" | "slate" }) => {
+  const themes = {
+    slate: {
+      border: "border-slate-200 dark:border-slate-800 hover:border-slate-500",
+      bg: "bg-white dark:bg-slate-900",
+      iconBg: "bg-slate-100 dark:bg-slate-800 group-hover:bg-slate-500",
+      iconColor: "text-slate-500 group-hover:text-white",
+      hoverShadow: "hover:shadow-slate-500/20",
+      glowBg: "bg-slate-500/5 group-hover:bg-slate-500/10"
+    },
+    blue: {
+      border: "border-blue-200 dark:border-blue-900/40 hover:border-blue-500",
+      bg: "bg-blue-50/30 dark:bg-blue-900/10",
+      iconBg: "bg-blue-100 dark:bg-blue-800/50 group-hover:bg-blue-500 shadow-inner group-hover:shadow-blue-500/40",
+      iconColor: "text-blue-500 group-hover:text-white",
+      hoverShadow: "hover:shadow-blue-500/20",
+      glowBg: "bg-blue-500/5 group-hover:bg-blue-500/10"
+    },
+    rose: {
+      border: "border-rose-200 dark:border-rose-900/40 hover:border-rose-500",
+      bg: "bg-rose-50/30 dark:bg-rose-900/10",
+      iconBg: "bg-rose-100 dark:bg-rose-800/50 group-hover:bg-rose-500 shadow-inner group-hover:shadow-rose-500/40",
+      iconColor: "text-rose-500 group-hover:text-white",
+      hoverShadow: "hover:shadow-rose-500/20",
+      glowBg: "bg-rose-500/5 group-hover:bg-rose-500/10"
+    },
+    amber: {
+      border: "border-amber-200 dark:border-amber-900/40 hover:border-amber-500",
+      bg: "bg-amber-50/30 dark:bg-amber-900/10",
+      iconBg: "bg-amber-100 dark:bg-amber-800/50 group-hover:bg-amber-500 shadow-inner group-hover:shadow-amber-500/40",
+      iconColor: "text-amber-500 group-hover:text-white",
+      hoverShadow: "hover:shadow-amber-500/20",
+      glowBg: "bg-amber-500/5 group-hover:bg-amber-500/10"
+    }
+  };
+  
+  const t = themes[theme];
+
+  return (
+    <motion.a 
+      href={`tel:${number}`}
+      whileHover={{ scale: 1.05, y: -5 }}
+      whileTap={{ scale: 0.95 }}
+      className={cn("flex flex-col items-center justify-center p-6 border rounded-[32px] hover:shadow-2xl transition-all group relative overflow-hidden", t.bg, t.border, t.hoverShadow)}
+    >
+      <div className={cn("absolute top-0 right-0 w-24 h-24 rounded-full -mr-12 -mt-12 transition-colors", t.glowBg)} />
+      <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center mb-3 transition-all duration-300 group-hover:scale-110", t.iconBg)}>
+        <Icon className={cn("w-7 h-7 transition-colors drop-shadow-sm", t.iconColor)} />
+      </div>
+      <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-[0.2em] mb-1 group-hover:text-slate-700 dark:group-hover:text-slate-200 transition-colors">{label}</span>
+      <span className="text-2xl font-black text-slate-900 dark:text-white tracking-tighter">{number}</span>
+      <div className={cn("mt-2 w-8 h-1 rounded-full group-hover:w-12 transition-all", t.iconBg)} />
+    </motion.a>
+  );
+});
 
 const NavigationLinkButton = React.memo(({ to, label, icon: Icon, theme }: { to: string, label: string, icon: any, theme: 'blue' | 'amber' | 'emerald' }) => {
   const themes = {
@@ -627,10 +698,10 @@ const Home = ({
               <div className="h-px flex-1 bg-slate-200 dark:bg-slate-800" />
             </div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-              <EmergencyButton number={APP_CONFIG.EMERGENCY_NUMBERS.GENERAL} label="General" icon={Phone} />
-              <EmergencyButton number={APP_CONFIG.EMERGENCY_NUMBERS.POLICE} label="Police" icon={Shield} />
-              <EmergencyButton number={APP_CONFIG.EMERGENCY_NUMBERS.AMBULANCE} label="Ambulance" icon={AlertCircle} />
-              <EmergencyButton number={APP_CONFIG.EMERGENCY_NUMBERS.FIRE} label="Fire" icon={Zap} />
+              <EmergencyButton number={APP_CONFIG.EMERGENCY_NUMBERS.GENERAL} label="General" icon={Phone} theme="slate" />
+              <EmergencyButton number={APP_CONFIG.EMERGENCY_NUMBERS.POLICE} label="Police" icon={Shield} theme="blue" />
+              <EmergencyButton number={APP_CONFIG.EMERGENCY_NUMBERS.AMBULANCE} label="Ambulance" icon={AlertCircle} theme="rose" />
+              <EmergencyButton number={APP_CONFIG.EMERGENCY_NUMBERS.FIRE} label="Fire" icon={Zap} theme="amber" />
             </div>
           </div>
 
@@ -664,6 +735,7 @@ const Home = ({
               title="Live Mapping" 
               description="Real-time interactive map system powered by Google Maps." 
               onClick={() => navigate('/map')}
+              theme="emerald"
             />
             <FeatureCard 
               icon={Zap} 
@@ -671,6 +743,7 @@ const Home = ({
               description={t.oneTapDesc} 
               onClick={handleSOS}
               active={!!activeAlertId}
+              theme="primary"
             />
             <FeatureCard 
               icon={Users} 
@@ -680,6 +753,7 @@ const Home = ({
                 const element = document.getElementById('ice-contacts');
                 element?.scrollIntoView({ behavior: 'smooth' });
               }}
+              theme="purple"
             />
             <FeatureCard 
               icon={Video} 
@@ -687,6 +761,7 @@ const Home = ({
               description={t.recordingDesc} 
               active={isRecording}
               onClick={() => isRecording ? stopRecording() : startRecording()}
+              theme="blue"
             />
           </div>
         </div>
