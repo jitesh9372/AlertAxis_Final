@@ -303,18 +303,46 @@ const EmergencyButton = React.memo(({ number, label, icon: Icon }: { number: str
   </motion.a>
 ));
 
-const NavigationLinkButton = React.memo(({ to, label, icon: Icon }: { to: string, label: string, icon: any }) => (
-  <Link 
-    to={to}
-    className="flex flex-col items-center justify-center p-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[32px] hover:border-primary hover:shadow-2xl hover:shadow-red-500/10 transition-all group relative overflow-hidden"
-  >
-    <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-    <div className="w-16 h-16 bg-slate-50 dark:bg-slate-800 rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
-      <Icon className="w-8 h-8 text-slate-400 group-hover:text-primary transition-colors" />
-    </div>
-    <span className="font-bold text-slate-700 dark:text-slate-300 group-hover:text-primary transition-colors text-center">{label}</span>
-  </Link>
-));
+const NavigationLinkButton = React.memo(({ to, label, icon: Icon, theme }: { to: string, label: string, icon: any, theme: 'blue' | 'amber' | 'emerald' }) => {
+  const themes = {
+    blue: {
+      border: "hover:border-blue-500 hover:shadow-blue-500/20",
+      gradient: "from-blue-500 to-cyan-500",
+      iconBg: "bg-blue-50 dark:bg-blue-500/10 group-hover:bg-blue-500 shadow-inner group-hover:shadow-blue-500/50",
+      iconColor: "text-blue-500 group-hover:text-white",
+      textColor: "text-slate-700 dark:text-slate-300 group-hover:text-blue-600 dark:group-hover:text-blue-400"
+    },
+    amber: {
+      border: "hover:border-amber-500 hover:shadow-amber-500/20",
+      gradient: "from-amber-500 to-orange-500",
+      iconBg: "bg-amber-50 dark:bg-amber-500/10 group-hover:bg-amber-500 shadow-inner group-hover:shadow-amber-500/50",
+      iconColor: "text-amber-500 group-hover:text-white",
+      textColor: "text-slate-700 dark:text-slate-300 group-hover:text-amber-600 dark:group-hover:text-amber-400"
+    },
+    emerald: {
+      border: "hover:border-emerald-500 hover:shadow-emerald-500/20",
+      gradient: "from-emerald-500 to-teal-500",
+      iconBg: "bg-emerald-50 dark:bg-emerald-500/10 group-hover:bg-emerald-500 shadow-inner group-hover:shadow-emerald-500/50",
+      iconColor: "text-emerald-500 group-hover:text-white",
+      textColor: "text-slate-700 dark:text-slate-300 group-hover:text-emerald-600 dark:group-hover:text-emerald-400"
+    }
+  };
+
+  const t = themes[theme];
+
+  return (
+    <Link 
+      to={to}
+      className={cn("flex flex-col items-center justify-center p-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[32px] transition-all group relative overflow-hidden", t.border)}
+    >
+      <div className={cn("absolute inset-0 bg-gradient-to-br opacity-0 group-hover:opacity-[0.08] dark:group-hover:opacity-10 transition-opacity duration-500", t.gradient)} />
+      <div className={cn("w-16 h-16 rounded-full flex items-center justify-center mb-4 transition-all duration-300 group-hover:scale-110", t.iconBg)}>
+        <Icon className={cn("w-8 h-8 transition-colors duration-300", t.iconColor)} />
+      </div>
+      <span className={cn("font-bold transition-colors text-center tracking-tight", t.textColor)}>{label}</span>
+    </Link>
+  );
+});
 
 const Home = ({ 
   user, 
@@ -614,9 +642,9 @@ const Home = ({
               <div className="h-px flex-1 bg-slate-200 dark:bg-slate-800" />
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
-              <NavigationLinkButton to="/dashboard" label="User Dashboard" icon={LayoutDashboard} />
-              <NavigationLinkButton to="/analytics" label="Risk Analytics" icon={Activity} />
-              <NavigationLinkButton to="/critical-zones" label="Critical Zones" icon={MapIcon} />
+              <NavigationLinkButton to="/dashboard" label="User Dashboard" icon={LayoutDashboard} theme="blue" />
+              <NavigationLinkButton to="/analytics" label="Risk Analytics" icon={Activity} theme="amber" />
+              <NavigationLinkButton to="/critical-zones" label="Critical Zones" icon={MapIcon} theme="emerald" />
             </div>
           </div>
         </div>
