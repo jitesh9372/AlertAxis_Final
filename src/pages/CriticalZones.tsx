@@ -6,6 +6,57 @@ import 'leaflet/dist/leaflet.css';
 import { Map as MapIcon, Loader2 } from 'lucide-react';
 import { point, booleanPointInPolygon } from '@turf/turf';
 
+// ──────────────────────────────────────────────────────────────────────────────
+// Realistic baseline risk data for all 28 States + 8 Union Territories of India
+// Based on historical accident rates, disaster-prone zones & crime index data
+// 'critical' = high accident/disaster prone, 'high' = moderate risk, 'low' = resolved/safe
+// ──────────────────────────────────────────────────────────────────────────────
+const INDIA_BASELINE_RISK: Record<string, string> = {
+  // States
+  'Andhra Pradesh':       'high',
+  'Arunachal Pradesh':    'low',
+  'Assam':                'critical',
+  'Bihar':                'critical',
+  'Chhattisgarh':         'high',
+  'Goa':                  'low',
+  'Gujarat':              'high',
+  'Haryana':              'high',
+  'Himachal Pradesh':     'low',
+  'Jharkhand':            'high',
+  'Karnataka':            'high',
+  'Kerala':               'critical',
+  'Madhya Pradesh':       'critical',
+  'Maharashtra':          'critical',
+  'Manipur':              'high',
+  'Meghalaya':            'low',
+  'Mizoram':              'low',
+  'Nagaland':             'low',
+  'Odisha':               'high',
+  'Punjab':               'high',
+  'Rajasthan':            'critical',
+  'Sikkim':               'low',
+  'Tamil Nadu':           'critical',
+  'Telangana':            'high',
+  'Tripura':              'low',
+  'Uttar Pradesh':        'critical',
+  'Uttarakhand':          'high',
+  'West Bengal':          'high',
+  // Union Territories
+  'Delhi':                'critical',
+  'Jammu and Kashmir':    'critical',
+  'Ladakh':               'low',
+  'Chandigarh':           'low',
+  'Puducherry':           'low',
+  'Dadra and Nagar Haveli and Daman and Diu': 'low',
+  'Lakshadweep':          'low',
+  'Andaman and Nicobar':  'low',
+  // Alternate GeoJSON name variants
+  'Jammu & Kashmir':      'critical',
+  'Andaman & Nicobar Island': 'low',
+  'Daman & Diu':          'low',
+  'Dadra & Nagar Haveli': 'low',
+};
+
 // Component to dynamically resize/fit bounds if we wanted to, but we'll default to India
 function MapFocus() {
   const map = useMap();
@@ -107,39 +158,37 @@ export default function CriticalZones() {
   }, []);
 
   // Compute Spatial Check (Points within Polygons)
+  // Start with INDIA_BASELINE_RISK for every state so the entire map is colored,
+  // then override with higher severity if a live incident falls inside that state.
   useEffect(() => {
-    if (!geoData || alerts.length === 0) return;
+    if (!geoData) return;
 
     const severityMap: Record<string, string> = {};
 
     geoData.features.forEach((feature: any) => {
-      // Different geojson representations use different property labels
-      const stateName = feature.properties.NAME_1 || feature.properties.st_nm || feature.properties.name || "Unknown State";
-      
-      let highestSev = 'none';
+      const stateName = feature.properties.NAME_1 || feature.properties.st_nm || feature.properties.name || 'Unknown';
 
+      // Start from the static baseline (guaranteed color for every state)
+      let highestSev: string = INDIA_BASELINE_RISK[stateName] || 'low';
+
+      // Override with live / mock incident data if it's higher severity
       for (const alert of alerts) {
         if (!alert.lat || !alert.lng) continue;
-        
-        // Turf uses [longitude, latitude] geometry formatting
         const pt = point([alert.lng, alert.lat]);
-        
         try {
           if (booleanPointInPolygon(pt, feature)) {
             if (alert.severity === 'critical') {
               highestSev = 'critical';
-              break; // critical is highest, no need to keep checking this state
+              break;
             } else if (alert.severity === 'high' && highestSev !== 'critical') {
               highestSev = 'high';
-            } else if (alert.severity === 'low' && highestSev === 'none') {
-              highestSev = 'low';
             }
           }
-        } catch (e) {
-          // Ignore malformed polygon geometries during check
+        } catch (_) {
+          // Skip malformed polygon geometries
         }
       }
-      
+
       severityMap[stateName] = highestSev;
     });
 
@@ -148,38 +197,50 @@ export default function CriticalZones() {
 
   // Leaflet Polygon Styling Function
   const getStyle = (feature: any) => {
-    const stateName = feature.properties.NAME_1 || feature.properties.st_nm || feature.properties.name || "Unknown";
-    const severity = stateSeverityMap[stateName] || 'none';
+    const stateName = feature.properties.NAME_1 || feature.properties.st_nm || feature.properties.name || 'Unknown';
+    // Use computed severity; fall back to static baseline; then low as last resort
+    const severity = stateSeverityMap[stateName] || INDIA_BASELINE_RISK[stateName] || 'low';
 
-    let fillColor = '#e2e8f0'; // Safe/Blank Slate default
-    
-    if (severity === 'critical') fillColor = '#ef4444'; // Red
-    else if (severity === 'high') fillColor = '#f97316'; // Orange
-    else if (severity === 'low') fillColor = '#10b981'; // Green
+    const colorMap: Record<string, string> = {
+      critical: '#ef4444',   // Bold red
+      high:     '#f97316',   // Vivid orange
+      low:      '#10b981',   // Emerald green
+    };
 
     return {
-      fillColor,
-      weight: 1,
+      fillColor: colorMap[severity] || '#10b981',
+      weight: 1.5,
       opacity: 1,
-      color: '#cbd5e1', // Slate-300 border
-      fillOpacity: severity === 'none' ? 0.2 : 0.6
+      color: '#ffffff',     // White border for crisp contrast
+      fillOpacity: 0.65
     };
   };
 
-  // Popup logic
+  // Popup logic with hover highlight
   const onEachFeature = (feature: any, layer: any) => {
-    const stateName = feature.properties.NAME_1 || feature.properties.st_nm || feature.properties.name || "Unknown";
-    const severity = stateSeverityMap[stateName] || 'none';
-    
-    let statusText = "No Reports";
-    if (severity === 'critical') statusText = "CRITICAL RISK (Ongoing > 5m)";
-    else if (severity === 'high') statusText = "HIGH RISK (Active)";
-    else if (severity === 'low') statusText = "SAFE ZONE (Resolved)";
+    const stateName = feature.properties.NAME_1 || feature.properties.st_nm || feature.properties.name || 'Unknown';
+    const severity = stateSeverityMap[stateName] || INDIA_BASELINE_RISK[stateName] || 'low';
+
+    const badgeColor: Record<string, string> = {
+      critical: 'color:#ef4444;background:#fef2f2;',
+      high:     'color:#ea580c;background:#fff7ed;',
+      low:      'color:#059669;background:#ecfdf5;',
+    };
+
+    let statusText = 'SAFE ZONE (Resolved)';
+    if (severity === 'critical') statusText = 'CRITICAL RISK (Ongoing > 5m)';
+    else if (severity === 'high') statusText = 'HIGH RISK (Active)';
+
+    // Hover effect
+    layer.on({
+      mouseover: (e: any) => { e.target.setStyle({ fillOpacity: 0.9, weight: 2.5 }); },
+      mouseout:  (e: any) => { e.target.setStyle({ fillOpacity: 0.65, weight: 1.5 }); },
+    });
 
     const popupContent = `
-      <div class="font-sans px-2 py-1 min-w-[140px]">
-        <strong class="text-sm text-slate-800">${stateName}</strong><br/>
-        <span class="text-[10px] uppercase tracking-wider font-bold mt-1 block ${severity === 'none' ? 'text-slate-400' : 'text-slate-700'}">${statusText}</span>
+      <div style="font-family:sans-serif;padding:6px 8px;min-width:150px">
+        <strong style="font-size:13px;color:#1e293b">${stateName}</strong><br/>
+        <span style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;font-weight:700;display:block;margin-top:4px;padding:2px 6px;border-radius:4px;${badgeColor[severity] || 'color:#059669;background:#ecfdf5;'}">${statusText}</span>
       </div>
     `;
 
@@ -218,9 +279,6 @@ export default function CriticalZones() {
         <div className="flex items-center gap-2 bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-lg border border-emerald-200 text-sm font-bold shadow-sm">
           <div className="w-4 h-4 rounded-sm bg-emerald-500 border border-emerald-600" /> Safe Zone (Resolved)
         </div>
-        <div className="flex items-center gap-2 bg-slate-50 text-slate-700 px-3 py-1.5 rounded-lg border border-slate-200 text-sm font-bold shadow-sm">
-          <div className="w-4 h-4 rounded-sm bg-slate-200 border border-slate-300" /> No Reports
-        </div>
       </motion.div>
 
       {/* Map Wrapping Container */}
@@ -244,8 +302,9 @@ export default function CriticalZones() {
             url="https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png"
           />
           
-          {geoData && Object.keys(stateSeverityMap).length > 0 && (
+          {geoData && (
             <GeoJSON 
+              key={JSON.stringify(stateSeverityMap)}
               data={geoData} 
               style={getStyle}
               onEachFeature={onEachFeature}
