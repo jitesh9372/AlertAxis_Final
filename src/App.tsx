@@ -1277,8 +1277,19 @@ export default function App() {
     }
 
     try {
-      // If we already have a stream (e.g. from the SOS Flash), reuse it to avoid hardware conflict
-      const stream = streamRef.current || await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+      // Try to reuse an existing stream if present, otherwise fetch a new one securely
+      let stream = streamRef.current;
+      if (!stream) {
+        try {
+          // Attempt asking for both audio and video
+          stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+        } catch (mediaErr) {
+          console.warn("Video+Audio request failed, falling back to Audio ONLY:", mediaErr);
+          // High chance of hardware conflict or iOS limitation, fallback to Audio Only
+          stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        }
+      }
+      
       const recorder = new MediaRecorder(stream);
       mediaRecorderRef.current = recorder;
       audioChunksRef.current = [];
