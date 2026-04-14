@@ -34,7 +34,8 @@ import {
   LogOut,
   User,
   LayoutDashboard,
-  Instagram
+  Instagram,
+  Activity
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
@@ -47,7 +48,9 @@ import SignIn from './pages/SignIn';
 import SignUp from './pages/SignUp';
 import Dashboard from './pages/Dashboard';
 import LiveMap from './pages/LiveMap';
-import InstagramReportPage from './pages/InstagramReport';import { cn } from './lib/utils';
+import InstagramReportPage from './pages/InstagramReport';
+import RiskAnalytics from './pages/RiskAnalytics';
+import { cn } from './lib/utils';
 import { translations, Language } from './i18n/translations';
 import { Chatbot } from './components/Chatbot';
 
@@ -117,6 +120,10 @@ const Navbar = ({ darkMode, toggleDarkMode, user, currentLanguage, setLanguage }
               <Instagram className="w-4 h-4" />
               {t.instagramReports}
             </Link>            
+            <Link to="/analytics" className={cn("text-sm font-medium transition-colors flex items-center gap-1", isActive('/analytics') ? "text-primary" : "text-slate-600 dark:text-slate-400 hover:text-primary")}>
+              <Activity className="w-4 h-4" />
+              Risk Analytics
+            </Link>
             {user ? (
               <div className="flex items-center gap-4">
                 <Link to="/dashboard" className={cn("text-sm font-medium transition-colors flex items-center gap-1", isActive('/dashboard') ? "text-primary" : "text-slate-600 dark:text-slate-400 hover:text-primary")}>
@@ -1795,6 +1802,7 @@ export default function App() {
             />
           } />
           <Route path="/instagram-report" element={<InstagramReportPage user={user} />} />
+          <Route path="/analytics" element={<RiskAnalytics />} />
         </Routes>
 
         {/* Footer */}
