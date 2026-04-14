@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../supabaseClient';
 import { motion } from 'framer-motion';
-import { MapContainer, TileLayer, GeoJSON, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, GeoJSON, CircleMarker, Popup, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
-import { Map as MapIcon, Loader2, AlertTriangle, Activity, CheckCircle } from 'lucide-react';
+import { Map as MapIcon, Loader2, AlertTriangle, Activity, CheckCircle, Navigation } from 'lucide-react';
 import { point, booleanPointInPolygon } from '@turf/turf';
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -240,11 +240,26 @@ function MapFocus() {
   return null;
 }
 
+// Fly map to a given position
+function MapAutoCenter({ position }: { position: [number, number] | null }) {
+  const map = useMap();
+  useEffect(() => {
+    if (position) {
+      map.flyTo(position, Math.max(map.getZoom(), 8), { animate: true, duration: 1.5 });
+    }
+  }, [position, map]);
+  return null;
+}
+
 export default function CriticalZones() {
   const [loading, setLoading] = useState(true);
   const [alerts, setAlerts] = useState<any[]>([]);
   const [geoData, setGeoData] = useState<any>(null);
   const [districtSeverityMap, setDistrictSeverityMap] = useState<Record<string, string>>({});
+  const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
+  const [userDistrict, setUserDistrict] = useState<string | null>(null);
+  const [locationError, setLocationError] = useState<string | null>(null);
+  const [centeredOnUser, setCenteredOnUser] = useState(false);
 
   // Fetch district-level GeoJSON
   useEffect(() => {
@@ -252,6 +267,26 @@ export default function CriticalZones() {
       .then(res => res.json())
       .then(data => setGeoData(data))
       .catch(err => console.error('Error loading india_districts.geojson', err));
+  }, []);
+
+  // Live GPS watch for user location
+  useEffect(() => {
+    if (!navigator.geolocation) {
+      setLocationError('Geolocation not supported by your browser.');
+      return;
+    }
+    const watchId = navigator.geolocation.watchPosition(
+      (pos) => {
+        setUserLocation([pos.coords.latitude, pos.coords.longitude]);
+        setLocationError(null);
+      },
+      (err) => {
+        setLocationError('Location access denied. Enable GPS for your location marker.');
+        console.warn('Geolocation error:', err.message);
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 }
+    );
+    return () => navigator.geolocation.clearWatch(watchId);
   }, []);
 
   // Fetch live alerts from Supabase
@@ -339,7 +374,6 @@ export default function CriticalZones() {
 
     geoData.features.forEach((feature: any) => {
       const districtName: string = feature.properties.NAME_2 || 'Unknown';
-      // Start with static baseline
       let highest: string = CITY_BASELINE_RISK[districtName] || 'low';
 
       for (const alert of alerts) {
@@ -356,8 +390,21 @@ export default function CriticalZones() {
       sevMap[districtName] = highest;
     });
 
+    // Also detect which district the user is in
+    if (userLocation) {
+      const userPt = point([userLocation[1], userLocation[0]]);
+      for (const feature of geoData.features) {
+        try {
+          if (booleanPointInPolygon(userPt, feature)) {
+            setUserDistrict(feature.properties.NAME_2 || null);
+            break;
+          }
+        } catch (_) {}
+      }
+    }
+
     setDistrictSeverityMap(sevMap);
-  }, [geoData, alerts]);
+  }, [geoData, alerts, userLocation]);
 
   // Color map
   const COLOR: Record<string, string> = {
@@ -417,45 +464,45 @@ export default function CriticalZones() {
   const safeCount     = stats.filter(s => s === 'low').length;
 
   return (
-    <div className="pt-24 px-4 pb-12 w-full max-w-7xl mx-auto min-h-screen flex flex-col">
+    <div className="pt-20 sm:pt-24 px-3 sm:px-4 pb-12 w-full max-w-7xl mx-auto min-h-screen flex flex-col">
       {/* Header */}
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-6 flex flex-col gap-2">
-        <h1 className="text-3xl md:text-5xl font-black text-slate-900 tracking-tight flex items-center gap-3">
-          <MapIcon className="w-8 h-8 text-primary" />
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-5 sm:mb-6 flex flex-col gap-1.5">
+        <h1 className="text-2xl sm:text-3xl md:text-5xl font-black text-slate-900 tracking-tight flex items-center gap-2 sm:gap-3">
+          <MapIcon className="w-6 h-6 sm:w-8 sm:h-8 text-primary shrink-0" />
           Critical Zones Map
         </h1>
-        <p className="text-slate-500 font-medium max-w-xl">
+        <p className="text-xs sm:text-sm text-slate-500 font-medium max-w-xl">
           City &amp; district-level emergency risk visualization across India — powered by live SOS data + NCRB/NHAI accident records.
         </p>
       </motion.div>
 
       {/* Stats Row */}
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.15 }} className="grid grid-cols-3 gap-4 mb-5">
-        <div className="bg-red-50 border border-red-200 rounded-2xl p-4 flex items-center gap-3">
-          <AlertTriangle className="w-7 h-7 text-red-500 shrink-0" />
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.15 }} className="grid grid-cols-1 xs:grid-cols-3 sm:grid-cols-3 gap-3 sm:gap-4 mb-4 sm:mb-5">
+        <div className="bg-red-50 border border-red-200 rounded-2xl p-3 sm:p-4 flex items-center gap-3">
+          <AlertTriangle className="w-6 h-6 sm:w-7 sm:h-7 text-red-500 shrink-0" />
           <div>
-            <p className="text-2xl font-black text-red-600">{criticalCount}</p>
-            <p className="text-xs font-bold text-red-500 uppercase tracking-widest">Critical Districts</p>
+            <p className="text-xl sm:text-2xl font-black text-red-600">{criticalCount}</p>
+            <p className="text-[10px] sm:text-xs font-bold text-red-500 uppercase tracking-widest">Critical Districts</p>
           </div>
         </div>
-        <div className="bg-orange-50 border border-orange-200 rounded-2xl p-4 flex items-center gap-3">
-          <Activity className="w-7 h-7 text-orange-500 shrink-0" />
+        <div className="bg-orange-50 border border-orange-200 rounded-2xl p-3 sm:p-4 flex items-center gap-3">
+          <Activity className="w-6 h-6 sm:w-7 sm:h-7 text-orange-500 shrink-0" />
           <div>
-            <p className="text-2xl font-black text-orange-600">{highCount}</p>
-            <p className="text-xs font-bold text-orange-500 uppercase tracking-widest">High-Risk Districts</p>
+            <p className="text-xl sm:text-2xl font-black text-orange-600">{highCount}</p>
+            <p className="text-[10px] sm:text-xs font-bold text-orange-500 uppercase tracking-widest">High-Risk</p>
           </div>
         </div>
-        <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 flex items-center gap-3">
-          <CheckCircle className="w-7 h-7 text-emerald-500 shrink-0" />
+        <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-3 sm:p-4 flex items-center gap-3">
+          <CheckCircle className="w-6 h-6 sm:w-7 sm:h-7 text-emerald-500 shrink-0" />
           <div>
-            <p className="text-2xl font-black text-emerald-600">{safeCount}</p>
-            <p className="text-xs font-bold text-emerald-500 uppercase tracking-widest">Safe Zones</p>
+            <p className="text-xl sm:text-2xl font-black text-emerald-600">{safeCount}</p>
+            <p className="text-[10px] sm:text-xs font-bold text-emerald-500 uppercase tracking-widest">Safe Zones</p>
           </div>
         </div>
       </motion.div>
 
-      {/* Legend */}
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.25 }} className="flex flex-wrap gap-3 mb-4">
+      {/* Legend + GPS Status */}
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.25 }} className="flex flex-wrap gap-2 sm:gap-3 mb-3 sm:mb-4 items-center">
         <div className="flex items-center gap-2 bg-red-50 text-red-700 px-3 py-1.5 rounded-lg border border-red-200 text-sm font-bold shadow-sm">
           <div className="w-4 h-4 rounded-sm bg-red-500 animate-pulse border border-red-600" /> Critical Risk (Ongoing &gt; 5m)
         </div>
@@ -465,10 +512,32 @@ export default function CriticalZones() {
         <div className="flex items-center gap-2 bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-lg border border-emerald-200 text-sm font-bold shadow-sm">
           <div className="w-4 h-4 rounded-sm bg-emerald-500 border border-emerald-600" /> Safe Zone (Resolved)
         </div>
+        {/* User location badge */}
+        <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-sm font-bold shadow-sm ${
+          userLocation
+            ? 'bg-blue-50 text-blue-700 border-blue-200'
+            : 'bg-slate-50 text-slate-500 border-slate-200'
+        }`}>
+          <div className={`w-4 h-4 rounded-full border-2 border-white shadow-sm ${
+            userLocation ? 'bg-blue-500 animate-pulse' : 'bg-slate-300'
+          }`} />
+          {userLocation
+            ? `📍 You — ${userDistrict || 'Locating…'}`
+            : locationError ? '⚠ Location Off' : '📡 Acquiring GPS…'
+          }
+        </div>
       </motion.div>
 
+      {/* GPS error banner */}
+      {locationError && (
+        <div className="mb-3 px-4 py-2 bg-amber-50 border border-amber-200 rounded-xl text-amber-700 text-xs font-bold flex items-center gap-2">
+          <Navigation className="w-4 h-4 shrink-0" />
+          {locationError}
+        </div>
+      )}
+
       {/* Map */}
-      <div className="bg-white p-2 rounded-2xl shadow-sm border border-slate-200 relative overflow-hidden z-0 flex-1" style={{ minHeight: '600px' }}>
+      <div className="bg-white p-1.5 sm:p-2 rounded-2xl shadow-sm border border-slate-200 relative overflow-hidden z-0 flex-1" style={{ minHeight: 'clamp(320px, 60vh, 650px)' }}>
         {loading && (
           <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-white/80 backdrop-blur-sm">
             <Loader2 className="w-10 h-10 animate-spin text-primary mb-3" />
@@ -477,13 +546,27 @@ export default function CriticalZones() {
           </div>
         )}
 
+        {/* Locate Me button */}
+        {userLocation && (
+          <button
+            onClick={() => setCenteredOnUser(prev => !prev)}
+            className="absolute top-4 right-4 z-20 flex items-center gap-2 bg-white shadow-lg border border-slate-200 text-blue-600 font-bold text-xs px-3 py-2 rounded-xl hover:bg-blue-50 transition-all"
+          >
+            <Navigation className="w-4 h-4" />
+            My Location
+          </button>
+        )}
+
         <MapContainer
           center={[22.5, 82.5]}
           zoom={5}
           scrollWheelZoom={true}
-          style={{ height: '600px', width: '100%', zIndex: 0, borderRadius: '0.75rem', background: '#f1f5f9' }}
+          style={{ height: 'clamp(320px, 60vh, 650px)', width: '100%', zIndex: 0, borderRadius: '0.75rem', background: '#f1f5f9' }}
         >
           <MapFocus />
+          {/* Fly to user whenever button toggled or first location arrives */}
+          <MapAutoCenter position={userLocation && centeredOnUser ? userLocation : null} />
+
           <TileLayer
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
             url="https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png"
@@ -496,6 +579,59 @@ export default function CriticalZones() {
               style={getStyle}
               onEachFeature={onEachFeature}
             />
+          )}
+
+          {/* User Location Marker */}
+          {userLocation && (
+            <>
+              {/* Outer pulse ring */}
+              <CircleMarker
+                center={userLocation}
+                radius={18}
+                pathOptions={{ color: '#3b82f6', fillColor: '#3b82f6', fillOpacity: 0.15, weight: 0 }}
+              />
+              {/* Inner solid dot */}
+              <CircleMarker
+                center={userLocation}
+                radius={9}
+                pathOptions={{ color: '#ffffff', fillColor: '#3b82f6', fillOpacity: 1, weight: 3 }}
+              >
+                <Popup>
+                  <div style={{ fontFamily: 'sans-serif', padding: '8px 10px', minWidth: '170px' }}>
+                    <strong style={{ fontSize: '13px', color: '#1e293b' }}>📍 Your Location</strong>
+                    {userDistrict && (
+                      <div style={{ fontSize: '11px', color: '#64748b', marginTop: '3px' }}>
+                        District: <strong>{userDistrict}</strong>
+                      </div>
+                    )}
+                    {userDistrict && districtSeverityMap[userDistrict] && (
+                      <div style={{
+                        marginTop: '6px',
+                        fontSize: '10px',
+                        fontWeight: 700,
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.08em',
+                        padding: '3px 8px',
+                        borderRadius: '6px',
+                        display: 'inline-block',
+                        ...(districtSeverityMap[userDistrict] === 'critical'
+                          ? { color: '#ef4444', background: '#fef2f2', border: '1px solid #fecaca' }
+                          : districtSeverityMap[userDistrict] === 'high'
+                          ? { color: '#ea580c', background: '#fff7ed', border: '1px solid #fed7aa' }
+                          : { color: '#16a34a', background: '#f0fdf4', border: '1px solid #bbf7d0' })
+                      }}>
+                        {districtSeverityMap[userDistrict] === 'critical' ? '🔴 Critical Risk Zone'
+                          : districtSeverityMap[userDistrict] === 'high' ? '🟠 High Risk Zone'
+                          : '🟢 Safe Zone'}
+                      </div>
+                    )}
+                    <div style={{ fontSize: '10px', color: '#94a3b8', marginTop: '6px' }}>
+                      {userLocation[0].toFixed(5)}°N, {userLocation[1].toFixed(5)}°E
+                    </div>
+                  </div>
+                </Popup>
+              </CircleMarker>
+            </>
           )}
         </MapContainer>
       </div>

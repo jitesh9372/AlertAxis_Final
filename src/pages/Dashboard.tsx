@@ -455,27 +455,27 @@ export default function Dashboard({
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 pt-20 pb-12 px-4 sm:px-6 lg:px-8 transition-colors">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 pt-16 sm:pt-20 pb-12 px-3 sm:px-6 lg:px-8 transition-colors">
       {/* Screen Flash Overlay */}
       {isScreenFlashOn && (
         <div className="pointer-events-none fixed inset-0 z-[100] bg-red-600/40 border-[8px] sm:border-[16px] border-red-600 transition-none" />
       )}
       <div className="max-w-7xl mx-auto">
         {/* Header Section */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-6 mb-6 sm:mb-8">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white">{t.userDashboard}</h1>
-            <p className="text-sm text-slate-500 dark:text-slate-400">{t.welcomeBack}, {profileData.name || user?.email}</p>
+            <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-slate-900 dark:text-white">{t.userDashboard}</h1>
+            <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">{t.welcomeBack}, {profileData.name || user?.email}</p>
           </div>
-          <div className="flex items-center gap-3 sm:gap-4">
+          <div className="flex items-center gap-2 sm:gap-4">
             <div className="relative">
               <button 
                 onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
-                className="p-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:text-primary transition-all relative"
+                className="p-2.5 sm:p-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:text-primary transition-all relative"
               >
-                <Bell className="w-5 h-5" />
+                <Bell className="w-4 h-4 sm:w-5 sm:h-5" />
                 {activities.length > 0 && (
-                  <span className="absolute top-2 right-2 w-2 h-2 bg-primary rounded-full"></span>
+                  <span className="absolute top-1.5 right-1.5 sm:top-2 sm:right-2 w-2 h-2 bg-primary rounded-full"></span>
                 )}
               </button>
               
@@ -525,15 +525,15 @@ export default function Dashboard({
             </div>
             <button 
               onClick={handleSignOut}
-              className="flex items-center gap-2 px-5 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl text-slate-600 dark:text-slate-400 hover:text-red-500 transition-all font-bold"
+              className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-5 py-2.5 sm:py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl text-slate-600 dark:text-slate-400 hover:text-red-500 transition-all font-bold text-sm"
             >
-              <LogOut className="w-5 h-5" />
-              {t.signOut}
+              <LogOut className="w-4 h-4 sm:w-5 sm:h-5" />
+              <span className="hidden sm:inline">{t.signOut}</span>
             </button>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 sm:gap-8">
           {/* Left Column: Profile & Quick Actions */}
           <div className="space-y-8">
             {/* Permission Warning */}
@@ -684,7 +684,7 @@ export default function Dashboard({
           {/* Middle Column: Recent Alerts */}
           <div className="lg:col-span-2 space-y-8">
             {/* Stats Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
               <div className="glass-card p-6 rounded-3xl">
                 <div className="w-10 h-10 bg-blue-50 dark:bg-blue-900/20 rounded-xl flex items-center justify-center mb-4">
                   <History className="text-blue-500 w-5 h-5" />
@@ -741,7 +741,7 @@ export default function Dashboard({
                           {activity.status === 'active' ? <AlertCircle className="w-6 h-6" /> : <CheckCircle2 className="w-6 h-6" />}
                         </div>
                         <div>
-                          <h4 className="font-bold text-slate-900 dark:text-white truncate max-w-[200px] sm:max-w-md">
+                          <h4 className="font-bold text-slate-900 dark:text-white truncate max-w-[160px] xs:max-w-[200px] sm:max-w-sm md:max-w-md">
                             {activity.status === 'evidence_uploaded' ? 'Evidence Recording' : activity.message}
                           </h4>
                           <p className="text-xs text-slate-400 dark:text-slate-500 font-medium">
@@ -780,7 +780,7 @@ export default function Dashboard({
                 </button>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 {contacts.length === 0 ? (
                   <div className="col-span-full text-center py-8 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800">
                     <p className="text-slate-500 dark:text-slate-400 text-sm">{t.noContacts}</p>

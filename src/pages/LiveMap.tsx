@@ -165,7 +165,7 @@ export default function LiveMap({ activeAlertId, location }: LiveMapProps) {
       </div>
 
       {/* Map Container */}
-      <div className="relative flex-1 z-0 w-full" style={{ height: 'calc(100vh - 80px)' }}>
+      <div className="relative flex-1 z-0 w-full" style={{ minHeight: 'calc(100dvh - 5rem)' }}>
         <MapContainer
           center={[center.lat, center.lng]}
           zoom={13}
@@ -236,16 +236,16 @@ export default function LiveMap({ activeAlertId, location }: LiveMapProps) {
         </MapContainer>
 
         {/* Floating Controls */}
-        <div className="absolute bottom-8 right-8 flex flex-col gap-4 z-10">
+        <div className="absolute bottom-4 sm:bottom-8 right-4 sm:right-8 flex flex-col gap-3 sm:gap-4 z-10">
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={() => {
               if (userLocation) setCenter(userLocation);
             }}
-            className="w-12 h-12 bg-white rounded-2xl shadow-2xl flex items-center justify-center text-slate-900 hover:bg-slate-50 transition-colors"
+            className="w-10 h-10 sm:w-12 sm:h-12 bg-white rounded-2xl shadow-2xl flex items-center justify-center text-slate-900 hover:bg-slate-50 transition-colors"
           >
-            <Navigation className="w-6 h-6" />
+            <Navigation className="w-5 h-5 sm:w-6 sm:h-6" />
           </motion.button>
         </div>
       </div>

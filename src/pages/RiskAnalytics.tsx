@@ -101,17 +101,17 @@ export default function RiskAnalytics() {
   const COLORS = ['#ef4444', '#f97316', '#10b981'];
 
   return (
-    <div className="pt-24 px-4 pb-12 w-full max-w-7xl mx-auto min-h-screen">
+    <div className="pt-20 sm:pt-24 px-3 sm:px-4 pb-12 w-full max-w-7xl mx-auto min-h-screen">
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="mb-8 flex flex-col gap-2"
+        className="mb-6 sm:mb-8 flex flex-col gap-1.5"
       >
-        <h1 className="text-3xl md:text-5xl font-black text-slate-900 tracking-tight flex items-center gap-3">
-          <Activity className="w-8 h-8 text-primary" />
+        <h1 className="text-2xl sm:text-3xl md:text-5xl font-black text-slate-900 tracking-tight flex items-center gap-2 sm:gap-3">
+          <Activity className="w-6 h-6 sm:w-8 sm:h-8 text-primary shrink-0" />
           Risk Analytics
         </h1>
-        <p className="text-slate-500 font-medium max-w-xl">
+        <p className="text-xs sm:text-sm text-slate-500 font-medium max-w-xl">
           Global, real-time telemetry monitoring for pending and resolved SOS emergency cases.
         </p>
       </motion.div>
@@ -123,7 +123,7 @@ export default function RiskAnalytics() {
       ) : (
         <div className="space-y-6">
           {/* Top Metrics Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             <MetricCard 
               title="Total Incidents" 
               value={metrics.total} 
@@ -150,11 +150,11 @@ export default function RiskAnalytics() {
             />
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-8">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 mt-6 sm:mt-8">
             {/* Trend Line Chart */}
-            <div className="col-span-1 lg:col-span-2 bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
-              <h3 className="text-lg font-bold text-slate-800 mb-6 font-display">Incident Frequency Trend</h3>
-              <div className="h-72 w-full">
+            <div className="col-span-1 lg:col-span-2 bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-6">
+              <h3 className="text-base sm:text-lg font-bold text-slate-800 mb-4 sm:mb-6 font-display">Incident Frequency Trend</h3>
+              <div className="h-56 sm:h-72 w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={trendData}>
                     <CartesianGrid strokeDasharray="3 3" opacity={0.3} vertical={false} />
@@ -220,8 +220,8 @@ export default function RiskAnalytics() {
           </div>
           
           {/* Active Emergencies Table Snippet */}
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 mt-6">
-             <h3 className="text-lg font-bold text-slate-800 mb-4 font-display flex items-center justify-between">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-6 mt-4 sm:mt-6">
+             <h3 className="text-base sm:text-lg font-bold text-slate-800 mb-3 sm:mb-4 font-display flex items-center justify-between">
                 Live Pending Alerts
                 <span className="bg-red-100 text-red-600 px-3 py-1 rounded-full text-xs font-bold animate-pulse">LIVE</span>
              </h3>
