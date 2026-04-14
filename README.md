@@ -18,3 +18,13 @@ View your app in AI Studio: https://ai.studio/apps/4305451d-e05e-4c9e-9098-7d848
 2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
 3. Run the app:
    `npm run dev`
+
+
+![image alt](https://github.com/jitesh9372/GlitchWave_Jitesh-kanojiya/blob/50e8501fc9d45e4c88279bb68539f1bc032c4038/studio1.png)
+![image alt](https://github.com/jitesh9372/GlitchWave_Jitesh-kanojiya/blob/50e8501fc9d45e4c88279bb68539f1bc032c4038/studio2.png)
+![image alt](https://github.com/jitesh9372/GlitchWave_Jitesh-kanojiya/blob/50e8501fc9d45e4c88279bb68539f1bc032c4038/studio3.png)
+![image alt](https://github.com/jitesh9372/GlitchWave_Jitesh-kanojiya/blob/50e8501fc9d45e4c88279bb68539f1bc032c4038/studio4.png)
+![image alt](https://github.com/jitesh9372/GlitchWave_Jitesh-kanojiya/blob/50e8501fc9d45e4c88279bb68539f1bc032c4038/studio5.png)
+
+
+   
