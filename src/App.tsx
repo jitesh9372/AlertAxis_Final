@@ -1429,15 +1429,17 @@ export default function App() {
 
   // ── SHAKE DETECTION via DeviceMotion API ──────────────────────────────────
   useEffect(() => {
-    const SHAKE_THRESHOLD = 18;   // m/s² magnitude threshold
-    const SHAKE_COUNT_NEEDED = 5; // consecutive shakes required
-    const SHAKE_WINDOW_MS = 2500; // time window to collect shakes
+    // Lowered threshold to 15 m/s² and shakes to 4 for easier triggering on typical devices
+    const SHAKE_THRESHOLD = 15;   
+    const SHAKE_COUNT_NEEDED = 4; 
+    const SHAKE_WINDOW_MS = 2500; 
 
     let lastAccel = { x: 0, y: 0, z: 0 };
 
     const handleMotion = (e: DeviceMotionEvent) => {
-      const acc = e.accelerationIncludingGravity;
+      const acc = e.accelerationIncludingGravity || e.acceleration;
       if (!acc) return;
+      
       const x = acc.x ?? 0;
       const y = acc.y ?? 0;
       const z = acc.z ?? 0;
@@ -1467,8 +1469,8 @@ export default function App() {
       }
     };
 
-    // iOS 13+ requires permission
-    const requestAndListen = async () => {
+    // Global initializer on first user interaction (Solves iOS 13+ permission restriction)
+    const initDeviceMotion = async () => {
       const DME = DeviceMotionEvent as any;
       if (typeof DME.requestPermission === 'function') {
         try {
@@ -1476,47 +1478,74 @@ export default function App() {
           if (perm === 'granted') {
             window.addEventListener('devicemotion', handleMotion);
           }
-        } catch {}
+        } catch (e) {
+          console.error("DeviceMotion Request Rejected", e);
+        }
       } else {
         window.addEventListener('devicemotion', handleMotion);
       }
+      
+      // Clean up the initializers once triggered successfully
+      document.removeEventListener('click', initDeviceMotion);
+      document.removeEventListener('touchstart', initDeviceMotion);
     };
 
-    requestAndListen();
+    // Attach interaction listeners to bootstrap permissions on mobile
+    document.addEventListener('click', initDeviceMotion);
+    document.addEventListener('touchstart', initDeviceMotion, { passive: true });
+
+    // Also try immediately in case it's Android/Desktop where permission is granted by default
+    const DME = DeviceMotionEvent as any;
+    if (typeof DME.requestPermission !== 'function') {
+      window.addEventListener('devicemotion', handleMotion);
+    }
 
     return () => {
       window.removeEventListener('devicemotion', handleMotion);
+      document.removeEventListener('click', initDeviceMotion);
+      document.removeEventListener('touchstart', initDeviceMotion);
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showTriggerToast]);
 
-  // ── VOLUME BUTTON DETECTION (4× VolumeUp within 3 s) ────────────────────
+  // ── VOLUME BUTTON LONG PRESS DETECTION (3s) ───────────────────────────────
   useEffect(() => {
-    const VOLUME_PRESSES_NEEDED = 4;
-    const VOLUME_WINDOW_MS = 3000;
+    let volumeHoldTimer: NodeJS.Timeout | null = null;
+    let isHolding = false;
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      // MediaTrackUp fires on some Android browsers / desktop media keys
-      if (e.key === 'AudioVolumeUp' || e.key === 'VolumeUp' || e.code === 'AudioVolumeUp') {
-        e.preventDefault();
-        const now = Date.now();
-        volumePressTimestampsRef.current.push(now);
-        volumePressTimestampsRef.current = volumePressTimestampsRef.current.filter(
-          ts => now - ts <= VOLUME_WINDOW_MS
-        );
+      // Capture both VolumeUp & VolumeDown based on standard key codes
+      if (['AudioVolumeUp', 'VolumeUp', 'AudioVolumeDown', 'VolumeDown'].includes(e.key) || e.keyCode === 175 || e.keyCode === 174) {
+        if (!isHolding) {
+          isHolding = true;
+          volumeHoldTimer = setTimeout(() => {
+            if (!activeAlertIdRef.current) {
+              showTriggerToast('🔔 SOS triggered by Volume Button Long Press!', '🔊');
+              handleSOS();
+            }
+          }, 3000); // 3 seconds hold to trigger
+        }
+      }
+    };
 
-        if (volumePressTimestampsRef.current.length >= VOLUME_PRESSES_NEEDED) {
-          volumePressTimestampsRef.current = [];
-          if (!activeAlertIdRef.current) {
-            showTriggerToast('🔔 SOS triggered by Volume Button (4×)!', '🔊');
-            handleSOS();
-          }
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (['AudioVolumeUp', 'VolumeUp', 'AudioVolumeDown', 'VolumeDown'].includes(e.key) || e.keyCode === 175 || e.keyCode === 174) {
+        isHolding = false;
+        if (volumeHoldTimer) {
+          clearTimeout(volumeHoldTimer);
+          volumeHoldTimer = null;
         }
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+    
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+      if (volumeHoldTimer) clearTimeout(volumeHoldTimer);
+    };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showTriggerToast]);
 
