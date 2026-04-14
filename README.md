@@ -26,8 +26,7 @@ View your app in AI Studio: https://ai.studio/apps/4305451d-e05e-4c9e-9098-7d848
 ![image alt](https://github.com/jitesh9372/GlitchWave_Jitesh-kanojiya/blob/50e8501fc9d45e4c88279bb68539f1bc032c4038/studio4.png)
 ![image alt](https://github.com/jitesh9372/GlitchWave_Jitesh-kanojiya/blob/50e8501fc9d45e4c88279bb68539f1bc032c4038/studio5.png)
 ![image alt](https://github.com/jitesh9372/GlitchWave_Jitesh-kanojiya/blob/81810f1edadc9789cf1dfd3a0d2971e6802b6b52/studio6.png)
-![video alt](https://github.com/jitesh9372/GlitchWave_Jitesh-kanojiya/blob/9bfc2b980392ea744acf6070c7d78c2adbc5ade9/WhatsApp%20Video%202026-04-14%20at%206.41.37%20PM.mp4)
-
+https://github.com/user-attachments/assets/bb44690f-9bcc-48e9-b9d4-2d0209b6d90b
 
 
    
