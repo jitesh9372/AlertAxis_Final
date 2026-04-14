@@ -909,41 +909,50 @@ const Home = ({
       </section>
 
       {/* ICE Contacts Section */}
-      <section id="ice-contacts" className="py-24 px-4 transition-colors">
-        <div className="max-w-7xl mx-auto">
+      <section id="ice-contacts" className="py-24 px-4 transition-colors relative overflow-hidden">
+        <div className="absolute top-0 left-0 -translate-y-1/2 -translate-x-1/4 w-[600px] h-[600px] bg-purple-500/5 dark:bg-purple-500/10 rounded-full blur-[120px] pointer-events-none" />
+        <div className="absolute bottom-0 right-0 translate-y-1/4 translate-x-1/4 w-[600px] h-[600px] bg-fuchsia-500/5 dark:bg-fuchsia-500/10 rounded-full blur-[120px] pointer-events-none" />
+        
+        <div className="max-w-7xl mx-auto relative z-10">
           <div className="text-center mb-16">
-            <h2 className="text-3xl font-bold text-slate-900 dark:text-white mb-4">{t.iceContacts}</h2>
-            <p className="text-slate-500 dark:text-slate-400">{t.iceContactsDesc}</p>
+            <span className="inline-block px-4 py-1.5 bg-purple-50 dark:bg-purple-900/20 text-purple-600 font-bold uppercase tracking-widest rounded-full mb-4">
+              Trusted Network
+            </span>
+            <h2 className="text-4xl md:text-5xl font-black text-slate-900 dark:text-white mb-4 tracking-tight">{t.iceContacts}</h2>
+            <p className="text-slate-500 dark:text-slate-400 text-lg max-w-2xl mx-auto">{t.iceContactsDesc}</p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {user ? (
               <>
                 {contacts.map((contact) => (
-                  <div key={contact.id} className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 flex items-center justify-between group">
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center font-bold text-slate-600 dark:text-slate-400">
+                  <div key={contact.id} className="bg-purple-50/30 dark:bg-purple-900/10 p-6 rounded-3xl border border-purple-200 dark:border-purple-900/40 hover:border-purple-500 hover:shadow-2xl hover:shadow-purple-500/20 flex flex-col sm:flex-row items-center sm:justify-between gap-4 group transition-all relative overflow-hidden">
+                    <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    
+                    <div className="flex items-center gap-4 w-full sm:w-auto">
+                      <div className="w-14 h-14 bg-purple-100 dark:bg-purple-800/50 rounded-2xl flex flex-shrink-0 items-center justify-center font-black text-2xl text-purple-600 dark:text-purple-400 group-hover:bg-purple-500 group-hover:text-white group-hover:scale-110 group-hover:rotate-3 shadow-inner transition-all duration-300">
                         {contact.name[0]}
                       </div>
-                      <div>
-                        <h4 className="font-bold text-slate-900 dark:text-white">{contact.name}</h4>
-                        <p className="text-xs text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider">{contact.relation}</p>
+                      <div className="flex-1">
+                        <h4 className="font-bold text-lg text-slate-900 dark:text-white truncate">{contact.name}</h4>
+                        <p className="text-[10px] text-purple-500/80 font-black uppercase tracking-widest">{contact.relation}</p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
+                    
+                    <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
                       <button 
                         onClick={() => openContactModal(contact)}
-                        className="w-10 h-10 bg-slate-50 dark:bg-slate-800 rounded-full flex items-center justify-center text-slate-400 hover:text-primary hover:bg-red-50 dark:hover:bg-red-900/20 transition-all"
+                        className="w-10 h-10 bg-white dark:bg-slate-800 rounded-xl flex items-center justify-center text-slate-400 hover:text-purple-600 hover:bg-purple-100 dark:hover:bg-purple-900/40 shadow-sm transition-all relative z-10"
                       >
                         <Info className="w-5 h-5" />
                       </button>
                       <button 
                         onClick={() => handleDeleteContact(contact.id)}
-                        className="w-10 h-10 bg-slate-50 dark:bg-slate-800 rounded-full flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all"
+                        className="w-10 h-10 bg-white dark:bg-slate-800 rounded-xl flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 shadow-sm transition-all relative z-10"
                       >
                         <X className="w-5 h-5" />
                       </button>
-                      <a href={`tel:${contact.phone}`} className="w-10 h-10 bg-slate-50 dark:bg-slate-800 rounded-full flex items-center justify-center text-slate-400 hover:text-primary hover:bg-red-50 dark:hover:bg-red-900/20 transition-all">
+                      <a href={`tel:${contact.phone}`} className="w-10 h-10 bg-white dark:bg-slate-800 rounded-xl flex items-center justify-center text-slate-400 hover:text-green-500 hover:bg-green-50 dark:hover:bg-green-900/20 shadow-sm transition-all relative z-10">
                         <Phone className="w-5 h-5" />
                       </a>
                     </div>
@@ -951,18 +960,23 @@ const Home = ({
                 ))}
                 <button 
                   onClick={() => openContactModal()}
-                  className="border-2 border-dashed border-slate-200 dark:border-slate-800 p-6 rounded-3xl text-slate-400 dark:text-slate-500 font-bold hover:border-primary hover:text-primary transition-all flex items-center justify-center gap-2"
+                  className="border-2 border-dashed border-purple-200 dark:border-purple-900/40 bg-purple-50/10 dark:bg-purple-900/5 p-6 rounded-3xl text-purple-400 dark:text-purple-500 font-bold hover:border-purple-500 hover:text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-all flex flex-col items-center justify-center gap-3 group"
                 >
-                  <Users className="w-5 h-5" />
+                  <div className="w-12 h-12 bg-purple-100 dark:bg-purple-800/50 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <Users className="w-6 h-6 text-purple-500" />
+                  </div>
                   Add New Contact
                 </button>
               </>
             ) : (
-              <div className="col-span-full text-center py-12 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800">
-                <AlertCircle className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-                <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">{t.manageContacts}</h3>
-                <p className="text-slate-500 dark:text-slate-400 mb-6">{t.manageContactsDesc}</p>
-                <Link to="/signin" className="bg-primary text-white px-8 py-3 rounded-full font-bold hover:bg-primary-dark transition-all">
+              <div className="col-span-full text-center py-16 bg-purple-50/30 dark:bg-purple-900/10 rounded-[40px] border border-purple-200 dark:border-purple-900/40 relative overflow-hidden group">
+                <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                <div className="w-20 h-20 bg-purple-100 dark:bg-purple-800/50 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-inner group-hover:scale-110 group-hover:rotate-6 transition-all duration-300">
+                  <AlertCircle className="w-10 h-10 text-purple-500" />
+                </div>
+                <h3 className="text-2xl font-black text-slate-900 dark:text-white mb-3 tracking-tight">{t.manageContacts}</h3>
+                <p className="text-slate-500 dark:text-slate-400 mb-8 max-w-md mx-auto relative z-10">{t.manageContactsDesc}</p>
+                <Link to="/signin" className="inline-block bg-purple-600 text-white px-10 py-4 rounded-2xl font-bold tracking-wide hover:bg-purple-700 hover:shadow-xl hover:shadow-purple-500/30 transition-all active:scale-95 relative z-10">
                   {t.signInNow}
                 </Link>
               </div>
@@ -1041,8 +1055,7 @@ const Home = ({
               { q: t.faq2Q, a: t.faq2A },
               { q: t.faq3Q, a: t.faq3A },
               { q: t.faq4Q, a: t.faq4A },
-              { q: t.faq5Q, a: t.faq5A },
-              { q: t.faq6Q, a: t.faq6A }
+              { q: t.faq5Q, a: t.faq5A }
             ].map((item, i) => (
               <details key={i} className="group glass-card rounded-2xl overflow-hidden">
                 <summary className="flex items-center justify-between p-6 cursor-pointer list-none">
