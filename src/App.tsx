@@ -35,7 +35,8 @@ import {
   User,
   LayoutDashboard,
   Instagram,
-  Activity
+  Activity,
+  Map as MapIcon
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
@@ -50,6 +51,7 @@ import Dashboard from './pages/Dashboard';
 import LiveMap from './pages/LiveMap';
 import InstagramReportPage from './pages/InstagramReport';
 import RiskAnalytics from './pages/RiskAnalytics';
+import CriticalZones from './pages/CriticalZones';
 import { cn } from './lib/utils';
 import { translations, Language } from './i18n/translations';
 import { Chatbot } from './components/Chatbot';
@@ -123,6 +125,10 @@ const Navbar = ({ darkMode, toggleDarkMode, user, currentLanguage, setLanguage }
             <Link to="/analytics" className={cn("text-sm font-medium transition-colors flex items-center gap-1", isActive('/analytics') ? "text-primary" : "text-slate-600 dark:text-slate-400 hover:text-primary")}>
               <Activity className="w-4 h-4" />
               Risk Analytics
+            </Link>
+            <Link to="/critical-zones" className={cn("text-sm font-medium transition-colors flex items-center gap-1", isActive('/critical-zones') ? "text-primary" : "text-slate-600 dark:text-slate-400 hover:text-primary")}>
+              <MapIcon className="w-4 h-4" />
+              Critical Zones
             </Link>
             {user ? (
               <div className="flex items-center gap-4">
@@ -1803,6 +1809,7 @@ export default function App() {
           } />
           <Route path="/instagram-report" element={<InstagramReportPage user={user} />} />
           <Route path="/analytics" element={<RiskAnalytics />} />
+          <Route path="/critical-zones" element={<CriticalZones />} />
         </Routes>
 
         {/* Footer */}
