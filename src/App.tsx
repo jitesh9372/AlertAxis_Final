@@ -1343,13 +1343,31 @@ export default function App() {
       return true;
     } catch (err: any) {
       console.error("Recording error:", err);
+      
+      // NEVER show blocking alerts during an emergency
+      // If the phone is locked/backgrounded, OS blocks camera access. 
+      // alert() completely freezes the JS thread and stops live location!
+      if (alertId || activeAlertId) {
+        try {
+          await supabase.from('users_detail').insert([{
+            feature_type: 'alert_update',
+            user_id: user?.id || null,
+            message: `Evidence recording restricted by OS (likely backgrounded/locked): ${err.message}`,
+            status: 'recording_failed',
+            relation: alertId || activeAlertId
+          }]);
+        } catch (e) {}
+        return false;
+      }
+
+      // Only show alerts if the user manually clicked a test button while using the app normally
       const isPermissionError = err.name === 'NotAllowedError' || 
                                err.name === 'PermissionDeniedError' || 
                                err.message?.includes('Permission dismissed') ||
                                err.message?.includes('denied');
       
       if (isPermissionError) {
-        alert("Camera and Microphone permissions are required for emergency evidence recording. Please enable them in your browser settings and try again.");
+        alert("Camera and Microphone permissions are required. Please enable them in your browser settings.");
       } else {
         alert("Could not start recording. Please check your device settings.");
       }
