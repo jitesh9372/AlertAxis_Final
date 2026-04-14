@@ -28,5 +28,6 @@ View your app in AI Studio: https://ai.studio/apps/4305451d-e05e-4c9e-9098-7d848
 ![image alt](https://github.com/jitesh9372/GlitchWave_Jitesh-kanojiya/blob/81810f1edadc9789cf1dfd3a0d2971e6802b6b52/studio6.png)
 https://github.com/user-attachments/assets/bb44690f-9bcc-48e9-b9d4-2d0209b6d90b
 
+Deployed Vercel link of the website- https://alertaxis56.vercel.app/
 
    
