@@ -119,7 +119,7 @@ export default function LiveMap({ activeAlertId, location }: LiveMapProps) {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 flex flex-col">
+    <div className="h-[100dvh] pt-16 pb-16 md:pb-0 bg-slate-950 flex flex-col safe-area-bottom">
       {/* Header */}
       <div className="h-auto min-h-[5rem] py-4 flex-shrink-0 bg-slate-900/50 backdrop-blur-xl border-b border-white/5 flex flex-col sm:flex-row items-center justify-between px-4 sm:px-8 gap-4 z-10">
         <div className="flex items-center gap-3 sm:gap-4 w-full sm:w-auto">
@@ -165,7 +165,7 @@ export default function LiveMap({ activeAlertId, location }: LiveMapProps) {
       </div>
 
       {/* Map Container */}
-      <div className="relative flex-1 z-0 w-full h-[calc(100dvh-5rem)]">
+      <div className="relative flex-1 z-0 w-full">
         <MapContainer
           center={[center.lat, center.lng]}
           zoom={13}
