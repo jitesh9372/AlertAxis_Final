@@ -1,17 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+
 import { Instagram, Upload, ExternalLink, AlertCircle, CheckCircle2, Loader2, Play, Camera, Video, Mic, StopCircle, Trash2, Send } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import { cn } from '../lib/utils';
-
-interface InstagramReel {
-  id: string;
-  media_url: string;
-  permalink: string;
-  caption: string;
-  timestamp: string;
-  media_type: string;
-}
 
 interface InstagramReport {
   id: string;
@@ -23,10 +14,7 @@ interface InstagramReport {
   video_storage_path?: string;
 }
 
-const INSTAGRAM_ACCESS_TOKEN = (import.meta as any).env.VITE_INSTAGRAM_ACCESS_TOKEN;
-
 const InstagramReportPage = ({ user }: { user: any }) => {
-  const [reels, setReels] = useState<InstagramReel[]>([]);
   const [reports, setReports] = useState<InstagramReport[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -34,7 +22,6 @@ const InstagramReportPage = ({ user }: { user: any }) => {
   const [success, setSuccess] = useState<string | null>(null);
   
   // Create Reel States
-  const [activeTab, setActiveTab] = useState<'browse' | 'create'>('browse');
   const [isRecording, setIsRecording] = useState(false);
   const [recordedBlob, setRecordedBlob] = useState<Blob | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -46,60 +33,12 @@ const InstagramReportPage = ({ user }: { user: any }) => {
   const streamRef = useRef<MediaStream | null>(null);
 
   useEffect(() => {
-    fetchReels();
     fetchReports();
+    startCamera();
     return () => {
       stopCamera();
     };
   }, []);
-
-  const fetchReels = async () => {
-    if (!INSTAGRAM_ACCESS_TOKEN || INSTAGRAM_ACCESS_TOKEN === 'undefined' || INSTAGRAM_ACCESS_TOKEN.includes('TODO')) {
-      setError("Instagram Access Token is missing or invalid. Please configure VITE_INSTAGRAM_ACCESS_TOKEN in your environment variables.");
-      setLoading(false);
-      return;
-    }
-
-    try {
-      // 1. Get User ID
-      const userResponse = await fetch(`https://graph.facebook.com/v19.0/me?fields=id&access_token=${INSTAGRAM_ACCESS_TOKEN}`);
-      const userData = await userResponse.json();
-      
-      if (userData.error) {
-        if (userData.error.code === 190) {
-          throw new Error("Instagram Access Token has expired or is invalid. Please update it.");
-        }
-        throw new Error(userData.error.message);
-      }
-      const userId = userData.id;
-
-      // 2. Get Hashtag ID for #alertaxis
-      const hashtagResponse = await fetch(`https://graph.facebook.com/v19.0/ig_hashtag_search?user_id=${userId}&q=alertaxis&access_token=${INSTAGRAM_ACCESS_TOKEN}`);
-      const hashtagData = await hashtagResponse.json();
-      if (hashtagData.error) throw new Error(hashtagData.error.message);
-      const hashtagId = hashtagData.data[0]?.id;
-
-      if (!hashtagId) {
-        setError("Hashtag #alertaxis_ not found.");
-        setLoading(false);
-        return;
-      }
-
-      // 3. Get Recent Media for Hashtag
-      const mediaResponse = await fetch(`https://graph.facebook.com/v19.0/${hashtagId}/recent_media?user_id=${userId}&fields=id,media_url,permalink,caption,timestamp,media_type&access_token=${INSTAGRAM_ACCESS_TOKEN}`);
-      const mediaData = await mediaResponse.json();
-      if (mediaData.error) throw new Error(mediaData.error.message);
-
-      // Filter for Reels (VIDEO)
-      const filteredReels = mediaData.data.filter((m: any) => m.media_type === 'VIDEO');
-      setReels(filteredReels);
-    } catch (err: any) {
-      console.error("Instagram API Error:", err);
-      setError(err.message || "Failed to fetch Instagram Reels.");
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const fetchReports = async () => {
     try {
@@ -115,66 +54,7 @@ const InstagramReportPage = ({ user }: { user: any }) => {
     }
   };
 
-  const handleReportReel = async (reel: InstagramReel) => {
-    setUploading(true);
-    setSuccess(null);
-    setError(null);
 
-    try {
-      let finalReelUrl = reel.permalink;
-      let storagePath = null;
-
-      // Try to fetch the video blob and upload to Supabase Storage
-      try {
-        const videoResponse = await fetch(reel.media_url);
-        if (videoResponse.ok) {
-          const videoBlob = await videoResponse.blob();
-          const fileName = `instagram_external_${reel.id}_${Date.now()}.mp4`;
-          const filePath = `instagram alert/${fileName}`;
-
-          const { data: uploadData, error: uploadError } = await supabase.storage
-            .from('app-files')
-            .upload(filePath, videoBlob);
-
-          if (!uploadError) {
-            const { data: { publicUrl } } = supabase.storage
-              .from('app-files')
-              .getPublicUrl(filePath);
-            
-            finalReelUrl = publicUrl;
-            storagePath = uploadData?.path || filePath;
-          }
-        }
-      } catch (fetchErr) {
-        console.warn("Could not fetch video blob due to CORS or other error, falling back to metadata only:", fetchErr);
-      }
-
-      const { error } = await supabase
-        .from('alertaxis')
-        .insert([
-          {
-            user_id: user?.id || null,
-            instagram_username: "Creator", 
-            reel_url: finalReelUrl,
-            caption: reel.caption,
-            media_id: reel.id,
-            hashtag: '#alertaxis',
-            video_storage_path: storagePath,
-            is_direct_upload: !!storagePath
-          }
-        ]);
-
-      if (error) throw error;
-      
-      setSuccess("Reel reported and stored in Supabase successfully!");
-      fetchReports();
-    } catch (err: any) {
-      console.error("Report Error:", err);
-      setError(err.message || "Failed to report reel.");
-    } finally {
-      setUploading(false);
-    }
-  };
 
   // Create Reel Functions
   const startCamera = async () => {
@@ -306,29 +186,7 @@ const InstagramReportPage = ({ user }: { user: any }) => {
             </p>
           </div>
           
-          <div className="flex bg-white dark:bg-slate-900 p-1 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
-            <button 
-              onClick={() => setActiveTab('browse')}
-              className={cn(
-                "px-6 py-2 rounded-xl text-sm font-bold transition-all",
-                activeTab === 'browse' ? "bg-primary text-white" : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
-              )}
-            >
-              Browse
-            </button>
-            <button 
-              onClick={() => {
-                setActiveTab('create');
-                startCamera();
-              }}
-              className={cn(
-                "px-6 py-2 rounded-xl text-sm font-bold transition-all",
-                activeTab === 'create' ? "bg-primary text-white" : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
-              )}
-            >
-              Create Reel
-            </button>
-          </div>
+
         </div>
 
         {error && (
@@ -347,96 +205,8 @@ const InstagramReportPage = ({ user }: { user: any }) => {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2">
-            <AnimatePresence mode="wait">
-              {activeTab === 'browse' ? (
-                <motion.div
-                  key="browse"
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: 20 }}
-                >
-                  <div className="flex items-center justify-between mb-6">
-                    <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                      <Play className="w-5 h-5 text-primary fill-primary" />
-                      Recent #alertaxis_ Reels
-                    </h2>
-                    <button 
-                      onClick={fetchReels}
-                      className="text-xs font-bold text-primary uppercase tracking-widest hover:underline"
-                    >
-                      Refresh
-                    </button>
-                  </div>
-
-                  {loading ? (
-                    <div className="flex flex-col items-center justify-center py-20 bg-white dark:bg-slate-900 rounded-[32px] border border-slate-100 dark:border-slate-800">
-                      <Loader2 className="w-10 h-10 text-primary animate-spin mb-4" />
-                      <p className="text-slate-500 dark:text-slate-400 font-medium">Fetching Reels...</p>
-                    </div>
-                  ) : reels.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-20 bg-white dark:bg-slate-900 rounded-[32px] border border-slate-100 dark:border-slate-800">
-                      <Instagram className="w-12 h-12 text-slate-200 dark:text-slate-700 mb-4" />
-                      <p className="text-slate-500 dark:text-slate-400 font-medium">No Reels found with #alertaxis_</p>
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                      {reels.map((reel) => (
-                        <motion.div 
-                          key={reel.id}
-                          initial={{ opacity: 0, y: 20 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          className="group bg-white dark:bg-slate-900 rounded-[32px] overflow-hidden border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-xl transition-all"
-                        >
-                          <div className="aspect-[9/16] relative bg-slate-100 dark:bg-slate-800">
-                            <video 
-                              src={reel.media_url} 
-                              className="w-full h-full object-cover"
-                              controls
-                              poster={reel.media_url}
-                            />
-                            <div className="absolute top-4 right-4">
-                              <a 
-                                href={reel.permalink} 
-                                target="_blank" 
-                                rel="noopener noreferrer"
-                                className="p-2 bg-white/20 backdrop-blur-md rounded-full text-white hover:bg-white/40 transition-all"
-                              >
-                                <ExternalLink className="w-4 h-4" />
-                              </a>
-                            </div>
-                          </div>
-                          <div className="p-6">
-                            <p className="text-sm text-slate-600 dark:text-slate-400 line-clamp-2 mb-4">
-                              {reel.caption || "No caption provided."}
-                            </p>
-                            <div className="flex items-center justify-between">
-                              <span className="text-xs text-slate-400 dark:text-slate-500 font-medium">
-                                {new Date(reel.timestamp).toLocaleDateString()}
-                              </span>
-                              <button 
-                                onClick={() => handleReportReel(reel)}
-                                disabled={uploading}
-                                className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white text-xs font-bold rounded-xl hover:bg-primary/90 transition-all disabled:opacity-50"
-                              >
-                                <Upload className="w-3 h-3" />
-                                Report to Supabase
-                              </button>
-                            </div>
-                          </div>
-                        </motion.div>
-                      ))}
-                    </div>
-                  )}
-                </motion.div>
-              ) : (
-                <motion.div
-                  key="create"
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -20 }}
-                  className="bg-white dark:bg-slate-900 rounded-[32px] border border-slate-100 dark:border-slate-800 p-8"
-                >
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="bg-white dark:bg-slate-900 rounded-[32px] border border-slate-100 dark:border-slate-800 p-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                     {/* Camera/Preview Section */}
                     <div className="space-y-4">
                       <div className="aspect-[9/16] bg-slate-100 dark:bg-slate-800 rounded-3xl overflow-hidden relative border-2 border-dashed border-slate-200 dark:border-slate-700">
@@ -560,9 +330,7 @@ const InstagramReportPage = ({ user }: { user: any }) => {
                       </div>
                     </div>
                   </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
+            </div>
           </div>
 
           {/* Reported History */}
